@@ -388,8 +388,10 @@
     border-radius: 16px;
     padding: 22px;
     border: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    flex-direction: column;
   }
-  #chart-panel h3 { margin-top: 0; font-size: 1rem; }
+  #chart-panel > h3 { margin: 0 0 6px 0; font-size: 1rem; flex: 0 0 auto; }
   .chart-controls {
     display: flex;
     gap: 14px;
@@ -402,36 +404,43 @@
     display: flex;
     gap: 16px;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-size: 0.78rem;
     color: var(--text-muted);
     flex-wrap: wrap;
+    flex: 0 0 auto;
   }
   .legend-item { display: flex; align-items: center; gap: 6px; }
   .legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
   #chart-info {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+    flex: 0 0 auto;
+    min-height: 1.1em;
   }
   .chart-grid-wrap {
-    overflow-x: auto;
-    margin-bottom: 14px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    margin-bottom: 6px;
   }
   .range-grid {
     display: grid;
-    grid-template-columns: repeat(13, minmax(28px, 1fr));
-    gap: 2px;
-    min-width: 460px;
+    grid-template-columns: repeat(13, 1fr);
+    grid-template-rows: repeat(13, 1fr);
+    gap: 1px;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
   }
   .range-cell {
-    aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.6rem;
+    font-size: clamp(0.45rem, 1vw, 0.72rem);
     font-weight: 700;
-    border-radius: 3px;
+    border-radius: 2px;
     letter-spacing: -0.3px;
   }
   .action-raise { background: #c0442f; color: #fff; }
@@ -442,11 +451,144 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 10px 0 16px 0;
+    margin: 6px 0 8px 0;
     flex-wrap: wrap;
   }
   .postflop-nav-row .primary-btn { margin-top: 0; }
   #chart-context-summary { font-size: 0.8rem; }
+
+  /* ---- GTOWizard-style position strip + situation tabs (click-first chart UI) ---- */
+  .chart-toprow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+    font-size: 0.82rem;
+  }
+  .chart-tablesize-inline { display: flex; align-items: center; gap: 6px; color: var(--text-muted); flex-shrink: 0; }
+  .chart-tablesize-inline b { color: var(--accent); }
+  .icon-btn.tiny { padding: 4px 9px; font-size: 0.7rem; }
+  .chart-opp-inline { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .chart-opp-inline label { color: var(--text-muted); font-size: 0.76rem; }
+  .chart-opp-inline select {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    padding: 5px 6px;
+    font-size: 0.78rem;
+  }
+  .to-flop-inline {
+    background: var(--accent);
+    color: #2a1e00;
+    border: none;
+    border-radius: 7px;
+    padding: 5px 11px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: auto;
+  }
+  .to-flop-inline:hover { filter: brightness(1.08); }
+  .situation-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .situation-tab {
+    background: var(--panel-2);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-muted);
+    border-radius: 7px;
+    padding: 6px 11px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .situation-tab:hover { background: #234438; }
+  .situation-tab.active {
+    background: rgba(212,164,55,0.18);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .pos-strip {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+    flex: 0 0 auto;
+  }
+  .pos-card {
+    flex: 1;
+    min-width: 0;
+    background: var(--panel-2);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 6px 5px;
+    cursor: pointer;
+    color: var(--text);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .pos-card:hover { border-color: rgba(212,164,55,0.5); }
+  .pos-card.selected {
+    border-color: var(--accent);
+    background: rgba(212,164,55,0.14);
+  }
+  .pos-card-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pos-card-bar {
+    display: flex;
+    height: 13px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.06);
+  }
+  .pos-card-bar .pos-seg.action-fold { background: rgba(255,255,255,0.14); }
+  .pos-card.skeleton .pos-card-bar { animation: pos-skeleton-pulse 1s ease-in-out infinite; }
+  @keyframes pos-skeleton-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.75; } }
+
+  .chart-postflop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+  }
+  .chart-postflop-grid .form-row { margin-bottom: 0; }
+  .chart-postflop-grid .form-row.span2 { grid-column: 1 / -1; }
+
+  /* ---- chart-mode: the range chart tab must fit one screen, no scrolling ---- */
+  body.chart-mode { overflow: hidden; height: 100vh; }
+  body.chart-mode .app { height: 100%; display: flex; flex-direction: column; }
+  body.chart-mode header { flex: 0 0 auto; margin-bottom: 12px; }
+  body.chart-mode .mode-tabs { flex: 0 0 auto; margin-bottom: 10px; }
+  body.chart-mode .stats-bar,
+  body.chart-mode #street-stats,
+  body.chart-mode footer,
+  body.chart-mode #chart-desc,
+  body.chart-mode #chart-footnote {
+    display: none !important;
+  }
+  body.chart-mode #chart-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  body.chart-mode #chart-preflop-section,
+  body.chart-mode #chart-postflop-section {
+    flex: 0 0 auto;
+  }
+  body.chart-mode .form-row {
+    margin-bottom: 5px;
+    font-size: 0.8rem;
+  }
+  body.chart-mode .form-row select,
+  body.chart-mode .form-row input[type="number"] {
+    padding: 5px 7px;
+    font-size: 0.8rem;
+    min-width: 0;
+  }
 </style>
 </head>
 <body>
@@ -660,66 +802,60 @@
     <p class="hint" id="chart-desc">포지션과 상황을 고르면 169개 시작 핸드 전체를 레이즈/콜/폴드로 색칠해서 보여줍니다. 실제 솔버 결과가 아닌 휴리스틱(Chen 스코어 기반) 근사치입니다.</p>
 
     <div id="chart-preflop-section">
-      <div class="chart-controls">
-        <div class="form-row"><label>테이블 사이즈</label>
-          <span><b id="chart-tablesize-badge">6-max</b> <button type="button" class="icon-btn" id="chart-tablesize-edit-btn" style="margin-left:8px;padding:4px 8px;font-size:0.75rem;">변경</button></span>
-        </div>
+      <div class="chart-toprow">
+        <span class="chart-tablesize-inline"><b id="chart-tablesize-badge">6-max</b> <button type="button" class="icon-btn tiny" id="chart-tablesize-edit-btn">변경</button></span>
+        <div id="chart-situation-tabs" class="situation-tabs"></div>
+        <div class="chart-opp-inline" id="chart-opp-row"><label id="chart-opp-label">상대</label><select id="chart-opp-pos"></select></div>
+        <button type="button" class="to-flop-inline" id="chart-to-flop-btn" title="현재 상황(포지션·팟·어그레서)을 그대로 이어받아 플랍으로 - 보드만 채워가며 턴/리버까지 볼 수 있어요">▶ 플랍</button>
       </div>
-      <div class="chart-controls" id="chart-preflop-controls">
-        <div class="form-row"><label>내 포지션</label><select id="chart-pos"></select></div>
-        <div class="form-row"><label>상황</label>
-          <select id="chart-situation">
-            <option value="rfi">오픈 레인지 (RFI)</option>
-            <option value="vsopen">상대 오픈에 대응</option>
-            <option value="vs3bet">상대 3벳에 대응</option>
-            <option value="vs4bet">상대 4벳에 대응</option>
-          </select>
-        </div>
-        <div class="form-row" id="chart-opp-row"><label id="chart-opp-label">상대 포지션</label><select id="chart-opp-pos"></select></div>
-      </div>
-      <button type="button" class="primary-btn" id="chart-to-flop-btn" style="margin-top:4px;">▶ 콜 받고 플랍으로</button>
-      <p class="hint" style="margin-bottom:0;">현재 화면의 상황(포지션·팟·누가 어그레서인지)이 그대로 이어져서 플랍부터 리버까지 보드만 채워가며 볼 수 있어요.</p>
+      <div id="chart-pos-strip" class="pos-strip"></div>
+      <!-- kept for backward-compatible JS wiring/tests; visually replaced by the strip/tabs above -->
+      <select id="chart-pos" style="display:none;"></select>
+      <select id="chart-situation" style="display:none;">
+        <option value="rfi">오픈 레인지 (RFI)</option>
+        <option value="vsopen">상대 오픈에 대응</option>
+        <option value="vs3bet">상대 3벳에 대응</option>
+        <option value="vs4bet">상대 4벳에 대응</option>
+      </select>
     </div>
 
     <div id="chart-postflop-section" style="display:none;">
       <div class="postflop-nav-row">
-        <button type="button" class="icon-btn" id="chart-back-to-preflop-btn">◀ 프리플랍으로</button>
+        <button type="button" class="icon-btn tiny" id="chart-back-to-preflop-btn">◀ 프리플랍으로</button>
         <span id="chart-context-summary" class="badge"></span>
+        <button type="button" class="icon-btn tiny" id="chart-random-board-btn">🎲 보드 다시</button>
+        <button type="button" class="to-flop-inline" id="chart-next-street-btn" style="margin-left:auto;">▶ 턴 카드 추가</button>
       </div>
 
       <div class="form-row"><label>보드</label>
         <div class="card-picker-row" id="chart-board-pickers"></div>
       </div>
-      <div class="postflop-nav-row">
-        <button type="button" class="icon-btn" id="chart-random-board-btn">🎲 이 보드 다시 뽑기</button>
-        <button type="button" class="primary-btn" id="chart-next-street-btn" style="flex:1;margin-top:0;">▶ 턴 카드 추가</button>
-      </div>
 
-      <div class="form-section-label">상황 (자동 설정됨 — 직접 조정 가능)</div>
-      <div class="form-row"><label>팟 크기 (bb)</label>
-        <input type="number" id="chart-pot" value="10" min="1" step="0.5" />
+      <div class="chart-postflop-grid">
+        <div class="form-row"><label>팟 크기 (bb)</label>
+          <input type="number" id="chart-pot" value="10" min="1" step="0.5" />
+        </div>
+        <div class="form-row"><label>상대 액션</label>
+          <select id="chart-villain-action">
+            <option value="0">체크함 / 내가 먼저</option>
+            <option value="bet">벳/레이즈함</option>
+          </select>
+        </div>
+        <div class="form-row" id="chart-villain-bet-row" style="display:none;"><label>상대 사이즈 (bb)</label>
+          <input type="number" id="chart-villain-bet" value="6" min="0.5" step="0.5" />
+        </div>
+        <div class="form-row"><label>마지막 어그레서?</label>
+          <select id="chart-hero-aggressor"><option value="yes">예</option><option value="no">아니오</option></select>
+        </div>
+        <div class="form-row"><label>인포지션?</label>
+          <select id="chart-hero-ip"><option value="yes">예</option><option value="no">아니오</option></select>
+        </div>
+        <div class="form-row span2"><label>상대 레인지 기준</label>
+          <select id="chart-villain-range-pos">
+            <option value="unknown">잘 모름 (넓게 추정)</option>
+          </select>
+        </div>
       </div>
-      <div class="form-row"><label>상대 액션</label>
-        <select id="chart-villain-action">
-          <option value="0">체크함 / 내가 먼저 액션</option>
-          <option value="bet">벳/레이즈함</option>
-        </select>
-      </div>
-      <div class="form-row" id="chart-villain-bet-row" style="display:none;"><label>상대 사이즈 (bb)</label>
-        <input type="number" id="chart-villain-bet" value="6" min="0.5" step="0.5" />
-      </div>
-      <div class="form-row"><label>내가 마지막 어그레서였나요?</label>
-        <select id="chart-hero-aggressor"><option value="yes">예</option><option value="no">아니오</option></select>
-      </div>
-      <div class="form-row"><label>내가 인포지션인가요?</label>
-        <select id="chart-hero-ip"><option value="yes">예</option><option value="no">아니오</option></select>
-      </div>
-      <div class="form-row"><label>상대 레인지 기준</label>
-        <select id="chart-villain-range-pos">
-          <option value="unknown">잘 모름 (넓게 추정)</option>
-        </select>
-      </div>
-      <p class="hint" style="margin-bottom:0;">스트리트를 넘길 때마다 팟은 "직전 스트리트에 약 2/3팟 벳이 콜됐다"고 가정해 자동으로 커집니다. 실제 핸드와 다르면 팟 크기와 상대 액션을 직접 수정하세요 — 바뀌는 즉시 다시 계산됩니다.</p>
     </div>
 
     <div class="chart-legend">
@@ -2421,6 +2557,7 @@
     chartStreet: 'preflop',
     chartDerivedVillainRange: null, // Set<canon>, derived exactly from the preflop situation just viewed
     chartDerivedLabel: '',
+    chartStripKey: null, // cache key so re-selecting a position doesn't re-run the strip's equity sims
   };
 
   // ---------- persistence ----------
@@ -2873,7 +3010,7 @@
       : (oppOptions.indexOf('CO') !== -1 ? 'CO' : oppOptions[0]);
     fillSelectPreserving(document.getElementById('chart-opp-pos'), oppOptions, preferred);
     document.getElementById('chart-opp-row').style.display = 'flex';
-    document.getElementById('chart-opp-label').textContent = situation === 'rfi' ? '콜 받을 상대 포지션' : '상대 포지션';
+    document.getElementById('chart-opp-label').textContent = situation === 'rfi' ? '콜 받을 상대' : '상대';
 
     // range-basis position for the postflop chart's villain range. Three kinds of options:
     // 1) "derived" - the EXACT range implied by the preflop situation the user just came from
@@ -3335,6 +3472,7 @@
     state.mode = 'random';
     setActiveTab('tab-random');
     hideAllModePanels();
+    document.body.classList.remove('chart-mode');
     document.getElementById('scenario-panel').style.display = 'block';
     document.getElementById('bottom-actions').style.display = 'block';
     document.getElementById('next-hand-btn').textContent = '다음 핸드 ▶';
@@ -3345,6 +3483,7 @@
     state.mode = 'custom';
     setActiveTab('tab-custom');
     hideAllModePanels();
+    document.body.classList.remove('chart-mode');
     document.getElementById('c-error').style.display = 'none';
     document.getElementById('custom-panel').style.display = 'block';
   }
@@ -3353,7 +3492,11 @@
     state.mode = 'chart';
     setActiveTab('tab-chart');
     hideAllModePanels();
-    document.getElementById('chart-panel').style.display = 'block';
+    // the range chart tab is the one view designed to fit a single screen with no scrolling -
+    // this class hides the training-progress widgets (irrelevant here) and switches the app
+    // shell to a fixed-height flex layout so the position strip + grid always fit.
+    document.body.classList.add('chart-mode');
+    document.getElementById('chart-panel').style.display = 'flex';
     // always land back on the preflop starting point when (re-)entering the chart tab
     state.chartStreet = 'preflop';
     document.getElementById('chart-postflop-section').style.display = 'none';
@@ -3402,12 +3545,12 @@
     });
   }
 
-  function renderChart() {
-    var tableSize = state.settings.tableSize;
-    var pos = document.getElementById('chart-pos').value;
-    var situation = document.getElementById('chart-situation').value;
-    var oppPos = document.getElementById('chart-opp-pos').value;
-
+  // Buckets all 169 canonical hands into raise/call/allin sets for a GIVEN hero position under
+  // the current situation - factored out of renderChart() so the same logic can compute both
+  // the detailed 169-cell grid (for the selected position) and the compact preview bar shown
+  // for every position in the position strip.
+  function computeChartBuckets(pos, situation, oppPos, tableSize, opts) {
+    var iterations = (opts && opts.iterations) || 150;
     var raiseSet = new Set();
     var callSet = new Set();
     var allinSet = new Set();
@@ -3417,7 +3560,7 @@
     } else if (situation === 'vsopen') {
       raiseSet = Preflop.threeBetRange(pos, oppPos, tableSize);
       var facingOpen = { type: 'open', openerPos: oppPos, sizeBB: 2.3, potBB: 3.8, toCallBB: 2.3 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: 150 }).call;
+      callSet = Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: iterations }).call;
       // the very top of the 3-bet range (AA/KK-type hands) would realistically often just get
       // jammed in rather than played as a standard-sized 3-bet, especially short-stacked/
       // tournament-relevant - split that top slice out as its own "올인" category, same idea as
@@ -3426,7 +3569,7 @@
     } else if (situation === 'vs3bet') {
       raiseSet = Preflop.fourBetRange(pos);
       var facingThreeBet = { type: 'threebet', openerPos: pos, threebettorPos: oppPos, sizeBB: 6.9, potBB: 10.7, toCallBB: 4.6 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: 150 }).call;
+      callSet = Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: iterations }).call;
       // same idea one street later: the top of an already-narrow 4-bet range is a shove, not a
       // standard-sized 4-bet.
       splitTopAsAllin(raiseSet, allinSet, 1.0);
@@ -3438,10 +3581,21 @@
       // the same premium-hand range used elsewhere as the 4bet-worthy threshold, layered over the
       // call bucket so the chart shows 4 real categories here instead of just call/fold.
       var facingFourBet = { type: 'fourbet', fourbettorPos: oppPos, sizeBB: 16, potBB: 1.5 + 6.9 + 16, toCallBB: 16 - 6.9 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingFourBet, tableSize, { iterations: 150 }).call;
+      callSet = Preflop.rangeBucketsForFacing(pos, facingFourBet, tableSize, { iterations: iterations }).call;
       allinSet = Preflop.fourBetRange(pos);
       allinSet.forEach(function (canon) { callSet.delete(canon); });
     }
+    return { raiseSet: raiseSet, callSet: callSet, allinSet: allinSet };
+  }
+
+  function renderChart() {
+    var tableSize = state.settings.tableSize;
+    var pos = document.getElementById('chart-pos').value;
+    var situation = document.getElementById('chart-situation').value;
+    var oppPos = document.getElementById('chart-opp-pos').value;
+
+    var buckets = computeChartBuckets(pos, situation, oppPos, tableSize, { iterations: 150 });
+    var raiseSet = buckets.raiseSet, callSet = buckets.callSet, allinSet = buckets.allinSet;
 
     var html = '';
     for (var r = 0; r < 13; r++) {
@@ -3459,6 +3613,79 @@
     if (callSet.size) info += ' · 콜 ' + callSet.size + '핸드 (' + pct(callSet.size) + '%)';
     document.getElementById('chart-info').textContent = info;
     updateChartLegend('preflop');
+
+    renderSituationTabs();
+    renderChartPosStrip();
+  }
+
+  // ---------- click-first position strip + situation tabs (GTOWizard-style overview) ----------
+  var CHART_SITUATION_ORDER = ['rfi', 'vsopen', 'vs3bet', 'vs4bet'];
+  var CHART_SITUATION_LABEL = { rfi: 'RFI', vsopen: 'vs 오픈', vs3bet: 'vs 3벳', vs4bet: 'vs 4벳' };
+
+  function renderSituationTabs() {
+    var current = document.getElementById('chart-situation').value;
+    var html = CHART_SITUATION_ORDER.map(function (s) {
+      var active = s === current ? ' active' : '';
+      return '<button type="button" class="situation-tab' + active + '" data-situation="' + s + '">' + CHART_SITUATION_LABEL[s] + '</button>';
+    }).join('');
+    document.getElementById('chart-situation-tabs').innerHTML = html;
+  }
+
+  // Renders one clickable card per valid hero position, each with a compact stacked bar
+  // showing the raise/allin/call/fold proportions for that position under the current
+  // situation - lets the user see every position at a glance and jump straight to any of
+  // them with one click, instead of digging through a position dropdown one at a time.
+  var chartStripRequestId = 0;
+  function renderChartPosStrip() {
+    var tableSize = state.settings.tableSize;
+    var situation = document.getElementById('chart-situation').value;
+    var oppPos = document.getElementById('chart-opp-pos').value;
+    var selectedPos = document.getElementById('chart-pos').value;
+    var order = Preflop.positionsFor(tableSize);
+    var positions = heroPositionOptions(order, situation);
+    var stripEl = document.getElementById('chart-pos-strip');
+    var key = situation + '|' + oppPos + '|' + tableSize + '|' + positions.join(',');
+
+    // Only the *selected* card changed (situation/opponent/table are the same as last render) -
+    // every position's underlying bucket sizes are unaffected by which one is "selected", so
+    // just restyle the existing cards instead of re-running the equity simulations again.
+    if (state.chartStripKey === key && stripEl.children.length === positions.length) {
+      Array.prototype.forEach.call(stripEl.querySelectorAll('.pos-card'), function (btn) {
+        btn.classList.toggle('selected', btn.getAttribute('data-pos') === selectedPos);
+      });
+      return;
+    }
+    state.chartStripKey = key;
+
+    stripEl.innerHTML = positions.map(function (p) {
+      var sel = p === selectedPos ? ' selected' : '';
+      return '<button type="button" class="pos-card skeleton' + sel + '" data-pos="' + p + '">' +
+        '<div class="pos-card-label">' + p + '</div><div class="pos-card-bar"></div></button>';
+    }).join('');
+
+    // Defer the actual per-position simulation so it never blocks the grid render above - a
+    // lower iteration count keeps this snappy since it's only an at-a-glance overview (the
+    // main grid for the selected position still uses the full 150 iterations).
+    var requestId = ++chartStripRequestId;
+    setTimeout(function () {
+      if (requestId !== chartStripRequestId) return; // superseded by a newer click
+      var html = positions.map(function (p) {
+        var b = computeChartBuckets(p, situation, oppPos, tableSize, { iterations: 30 });
+        var raisePct = (b.raiseSet.size / 169) * 100;
+        var allinPct = (b.allinSet.size / 169) * 100;
+        var callPct = (b.callSet.size / 169) * 100;
+        var foldPct = Math.max(0, 100 - raisePct - allinPct - callPct);
+        var sel = p === selectedPos ? ' selected' : '';
+        var segs = '';
+        if (raisePct > 0) segs += '<div class="pos-seg action-raise" style="flex:' + raisePct + '"></div>';
+        if (allinPct > 0) segs += '<div class="pos-seg action-allin" style="flex:' + allinPct + '"></div>';
+        if (callPct > 0) segs += '<div class="pos-seg action-call" style="flex:' + callPct + '"></div>';
+        if (foldPct > 0) segs += '<div class="pos-seg action-fold" style="flex:' + foldPct + '"></div>';
+        return '<button type="button" class="pos-card' + sel + '" data-pos="' + p + '">' +
+          '<div class="pos-card-label">' + p + '</div><div class="pos-card-bar">' + segs + '</div></button>';
+      }).join('');
+      if (document.getElementById('chart-pos-strip')) document.getElementById('chart-pos-strip').innerHTML = html;
+    }, 0);
   }
 
   // ---------- postflop range chart (board-pinned) ----------
@@ -3614,6 +3841,27 @@
     document.getElementById('chart-opp-pos').addEventListener('change', function () {
       renderChart();
       updateChartToFlopButtonLabel();
+    });
+    // click-first position strip / situation tabs: both are rendered fresh on every
+    // renderChart()/renderSituationTabs() call, so a single delegated listener on each
+    // container (rather than re-binding per-button handlers) is enough to catch every click.
+    document.getElementById('chart-pos-strip').addEventListener('click', function (e) {
+      var btn = e.target.closest('.pos-card');
+      if (!btn) return;
+      var newPos = btn.getAttribute('data-pos');
+      var sel = document.getElementById('chart-pos');
+      if (sel.value === newPos) return;
+      sel.value = newPos;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    document.getElementById('chart-situation-tabs').addEventListener('click', function (e) {
+      var btn = e.target.closest('.situation-tab');
+      if (!btn) return;
+      var newSituation = btn.getAttribute('data-situation');
+      var sel = document.getElementById('chart-situation');
+      if (sel.value === newSituation) return;
+      sel.value = newSituation;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
     });
     document.getElementById('chart-to-flop-btn').addEventListener('click', goToFlopFromPreflop);
     document.getElementById('chart-back-to-preflop-btn').addEventListener('click', backToPreflop);
