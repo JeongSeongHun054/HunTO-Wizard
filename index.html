@@ -583,7 +583,11 @@
   .chart-postflop-grid .form-row.span2 { grid-column: 1 / -1; }
 
   /* ---- single-view app shell: fixed-viewport, no vertical scroll, ever ---- */
-  html, body { height: 100%; overflow: hidden; }
+  /* body's own top-level padding (set near the top of this stylesheet) would otherwise add on
+     top of .app's height:100vh and push total content past the viewport - overflow:hidden would
+     then silently CLIP the bottom of the page instead of showing a scrollbar, which is worse
+     (invisible cut-off content). Zero it out here since .app now owns all of its own padding. */
+  html, body { height: 100%; overflow: hidden; padding: 0; margin: 0; }
   .app {
     max-width: 1220px;
     width: 100%;
