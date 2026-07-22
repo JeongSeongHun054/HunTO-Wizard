@@ -468,6 +468,14 @@
   }
   .chart-tablesize-inline { display: flex; align-items: center; gap: 6px; color: var(--text-muted); flex-shrink: 0; }
   .chart-tablesize-inline b { color: var(--accent); }
+  .chart-tablesize-inline select {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    padding: 5px 6px;
+    font-size: 0.78rem;
+  }
   .icon-btn.tiny { padding: 4px 9px; font-size: 0.7rem; }
   .chart-opp-inline { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .chart-opp-inline label { color: var(--text-muted); font-size: 0.76rem; }
@@ -520,7 +528,7 @@
     background: var(--panel-2);
     border: 1.5px solid rgba(255,255,255,0.08);
     border-radius: 8px;
-    padding: 6px 5px;
+    padding: 8px 8px 9px 8px;
     cursor: pointer;
     color: var(--text);
     text-align: center;
@@ -534,21 +542,27 @@
     background: rgba(212,164,55,0.14);
   }
   .pos-card-label {
-    font-size: 0.78rem;
+    font-size: 0.85rem;
     font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
   }
-  .pos-card-bar {
+  .pos-card-actions {
     display: flex;
-    height: 13px;
-    border-radius: 4px;
-    overflow: hidden;
-    background: rgba(255,255,255,0.06);
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.72rem;
+    font-weight: 700;
   }
-  .pos-card-bar .pos-seg.action-fold { background: rgba(255,255,255,0.14); }
-  .pos-card.skeleton .pos-card-bar { animation: pos-skeleton-pulse 1s ease-in-out infinite; }
+  .pos-action-line { text-align: center; }
+  .pos-action-line.action-fold { color: var(--text-muted); }
+  .pos-action-line.action-raise { color: #ff8a75; }
+  .pos-action-line.action-call { color: #7ec3f2; }
+  .pos-action-line.action-allin { color: #ff7fc4; }
+  .pos-card.skeleton .pos-card-actions { color: var(--text-muted); animation: pos-skeleton-pulse 1s ease-in-out infinite; }
   @keyframes pos-skeleton-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.75; } }
 
   .chart-postflop-grid {
@@ -561,7 +575,9 @@
 
   /* ---- chart-mode: the range chart tab must fit one screen, no scrolling ---- */
   body.chart-mode { overflow: hidden; height: 100vh; }
-  body.chart-mode .app { height: 100%; display: flex; flex-direction: column; }
+  /* chart-mode uses the full browser width instead of the base 880px reading-width cap - the
+     range chart is a dense grid that benefits from all the horizontal space it can get. */
+  body.chart-mode .app { max-width: none; width: 100%; padding-left: 24px; padding-right: 24px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; }
   body.chart-mode header { flex: 0 0 auto; margin-bottom: 12px; }
   body.chart-mode .mode-tabs { flex: 0 0 auto; margin-bottom: 10px; }
   body.chart-mode .stats-bar,
@@ -803,7 +819,7 @@
 
     <div id="chart-preflop-section">
       <div class="chart-toprow">
-        <span class="chart-tablesize-inline"><b id="chart-tablesize-badge">6-max</b> <button type="button" class="icon-btn tiny" id="chart-tablesize-edit-btn">변경</button></span>
+        <div class="chart-tablesize-inline"><select id="chart-tablesize-select"><option value="5">5-max</option><option value="6">6-max</option><option value="7">7-max</option><option value="8">8-max</option><option value="9">9-max (풀링)</option></select></div>
         <div id="chart-situation-tabs" class="situation-tabs"></div>
         <div class="chart-opp-inline" id="chart-opp-row"><label id="chart-opp-label">상대</label><select id="chart-opp-pos"></select></div>
         <button type="button" class="to-flop-inline" id="chart-to-flop-btn" title="현재 상황(포지션·팟·어그레서)을 그대로 이어받아 플랍으로 - 보드만 채워가며 턴/리버까지 볼 수 있어요">▶ 플랍</button>
@@ -2903,9 +2919,11 @@
   function updateTableSizeBadges() {
     var label = tableSizeLabel(state.settings.tableSize);
     var c = document.getElementById('c-tablesize-badge');
-    var ch = document.getElementById('chart-tablesize-badge');
     if (c) c.textContent = label;
-    if (ch) ch.textContent = label;
+    // the chart tab's table-size control is a real <select> (not a read-only badge) so the
+    // range-chart screen can change table size inline, without opening the shared settings panel.
+    var chSelect = document.getElementById('chart-tablesize-select');
+    if (chSelect) chSelect.value = String(state.settings.tableSize);
   }
   function openSettingsPanel() {
     var panel = document.getElementById('settings-panel');
@@ -2915,6 +2933,19 @@
     // if the user was scrolled down into that tab's content. Bring it into view explicitly.
     if (typeof panel.scrollIntoView === 'function') {
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+  // Shared by the settings-panel table-size select AND the chart tab's inline table-size select,
+  // so both stay in sync and both apply the change everywhere immediately (positions, chart, etc).
+  function applyTableSizeChange(newSize) {
+    state.settings.tableSize = Number(newSize) || 6;
+    saveSettings();
+    updateTableSizeBadges();
+    refreshCustomPositions();
+    refreshChartPositions();
+    if (state.mode === 'chart' && state.chartStreet === 'preflop') {
+      renderChart();
+      updateChartToFlopButtonLabel();
     }
   }
 
@@ -3631,8 +3662,42 @@
     document.getElementById('chart-situation-tabs').innerHTML = html;
   }
 
-  // Renders one clickable card per valid hero position, each with a compact stacked bar
-  // showing the raise/allin/call/fold proportions for that position under the current
+  // Computes the short list of text-line action labels shown on a position-strip card - e.g.
+  // "폴드 / 콜 / 레이즈 6.9bb / 올인" - approximating the bb-sizes a solver node would show,
+  // using the same flat sizing model (Preflop.sizing()) already used elsewhere in the trainer.
+  // Ordered fold -> call -> raise -> allin (roughly increasing commitment), and only includes
+  // a line when that bucket actually has hands in it for this position/situation.
+  function computeChartActionLines(pos, situation, oppPos, tableSize, buckets) {
+    var sizing = Preflop.sizing();
+    var lines = [];
+    var foldCount = 169 - buckets.raiseSet.size - buckets.allinSet.size - buckets.callSet.size;
+    if (foldCount > 0) lines.push({ cls: 'action-fold', text: '폴드' });
+    if (buckets.callSet.size) lines.push({ cls: 'action-call', text: '콜' });
+
+    if (situation === 'rfi') {
+      if (buckets.raiseSet.size) lines.push({ cls: 'action-raise', text: '레이즈 ' + round1(sizing.open) + 'bb' });
+    } else if (situation === 'vsopen') {
+      var ip = Preflop.inPosition(pos, oppPos, tableSize);
+      var threeBetBB = sizing.open * (ip ? sizing.threeBetIP : sizing.threeBetOOP);
+      if (buckets.raiseSet.size) lines.push({ cls: 'action-raise', text: '레이즈 ' + round1(threeBetBB) + 'bb' });
+    } else if (situation === 'vs3bet') {
+      var threeBetSizeBB = 6.9; // matches the flat facing-3bet sizing used in computeChartBuckets
+      var fourBetBB = threeBetSizeBB * sizing.fourBetMultiplier;
+      if (buckets.raiseSet.size) lines.push({ cls: 'action-raise', text: '레이즈 ' + round1(fourBetBB) + 'bb' });
+    }
+    // vs4bet is a bounded call/fold(+allin) model - no raise branch needed, fold/call/allin above cover it.
+    if (buckets.allinSet.size) lines.push({ cls: 'action-allin', text: '올인' });
+    return lines;
+  }
+
+  function renderPosCardActionsHTML(lines) {
+    return '<div class="pos-card-actions">' + lines.map(function (l) {
+      return '<div class="pos-action-line ' + l.cls + '">' + l.text + '</div>';
+    }).join('') + '</div>';
+  }
+
+  // Renders one clickable card per valid hero position, each with a compact text-line list of
+  // its fold/call/raise/allin actions (and bb-sizes) for that position under the current
   // situation - lets the user see every position at a glance and jump straight to any of
   // them with one click, instead of digging through a position dropdown one at a time.
   var chartStripRequestId = 0;
@@ -3660,7 +3725,7 @@
     stripEl.innerHTML = positions.map(function (p) {
       var sel = p === selectedPos ? ' selected' : '';
       return '<button type="button" class="pos-card skeleton' + sel + '" data-pos="' + p + '">' +
-        '<div class="pos-card-label">' + p + '</div><div class="pos-card-bar"></div></button>';
+        '<div class="pos-card-label">' + p + '</div><div class="pos-card-actions">…</div></button>';
     }).join('');
 
     // Defer the actual per-position simulation so it never blocks the grid render above - a
@@ -3671,18 +3736,10 @@
       if (requestId !== chartStripRequestId) return; // superseded by a newer click
       var html = positions.map(function (p) {
         var b = computeChartBuckets(p, situation, oppPos, tableSize, { iterations: 30 });
-        var raisePct = (b.raiseSet.size / 169) * 100;
-        var allinPct = (b.allinSet.size / 169) * 100;
-        var callPct = (b.callSet.size / 169) * 100;
-        var foldPct = Math.max(0, 100 - raisePct - allinPct - callPct);
+        var lines = computeChartActionLines(p, situation, oppPos, tableSize, b);
         var sel = p === selectedPos ? ' selected' : '';
-        var segs = '';
-        if (raisePct > 0) segs += '<div class="pos-seg action-raise" style="flex:' + raisePct + '"></div>';
-        if (allinPct > 0) segs += '<div class="pos-seg action-allin" style="flex:' + allinPct + '"></div>';
-        if (callPct > 0) segs += '<div class="pos-seg action-call" style="flex:' + callPct + '"></div>';
-        if (foldPct > 0) segs += '<div class="pos-seg action-fold" style="flex:' + foldPct + '"></div>';
         return '<button type="button" class="pos-card' + sel + '" data-pos="' + p + '">' +
-          '<div class="pos-card-label">' + p + '</div><div class="pos-card-bar">' + segs + '</div></button>';
+          '<div class="pos-card-label">' + p + '</div>' + renderPosCardActionsHTML(lines) + '</button>';
       }).join('');
       if (document.getElementById('chart-pos-strip')) document.getElementById('chart-pos-strip').innerHTML = html;
     }, 0);
@@ -3789,17 +3846,12 @@
       saveSettings();
     });
     document.getElementById('table-size-select').addEventListener('change', function (e) {
-      state.settings.tableSize = Number(e.target.value) || 6;
-      saveSettings();
-      updateTableSizeBadges();
-      // apply immediately across all tabs, not just "from the next hand" - this is what was
-      // actually broken before: the custom/chart tabs never heard about the table-size change.
-      refreshCustomPositions();
-      refreshChartPositions();
-      if (state.mode === 'chart' && state.chartStreet === 'preflop') {
-        renderChart();
-        updateChartToFlopButtonLabel();
-      }
+      applyTableSizeChange(e.target.value);
+    });
+    document.getElementById('chart-tablesize-select').addEventListener('change', function (e) {
+      // also keep the settings-panel select in sync so re-opening it shows the right value
+      document.getElementById('table-size-select').value = e.target.value;
+      applyTableSizeChange(e.target.value);
     });
     document.getElementById('game-type-select').addEventListener('change', function (e) {
       state.settings.gameType = e.target.value;
@@ -3826,7 +3878,6 @@
     document.getElementById('tab-custom').addEventListener('click', showCustomMode);
     document.getElementById('tab-chart').addEventListener('click', showChartMode);
     document.getElementById('c-tablesize-edit-btn').addEventListener('click', openSettingsPanel);
-    document.getElementById('chart-tablesize-edit-btn').addEventListener('click', openSettingsPanel);
     document.getElementById('c-street').addEventListener('change', onStreetChange);
     document.getElementById('c-pos').addEventListener('change', refreshCustomPositions);
     document.getElementById('c-facing-type').addEventListener('change', onFacingTypeChange);
