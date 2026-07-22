@@ -550,11 +550,14 @@
   .pos-action-btn.action-call { color: #7ec3f2; }
   .pos-action-btn.action-allin { color: #ff7fc4; }
   .pos-action-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
-  .pos-action-btn.chosen {
-    background: currentColor;
-    color: #0d1a14 !important;
-    border-color: rgba(255,255,255,0.3);
-  }
+  /* chosen state: fill with the action's own bright color, dark text on top. Deliberately spelled
+     out per-action instead of `background: currentColor` - currentColor resolves against this
+     SAME rule's own color declaration (not the .action-* rule's), which would collapse background
+     and text to the same near-black value and make the chosen button unreadable. */
+  .pos-action-btn.chosen.action-fold { background: var(--text-muted); color: #0d1a14; border-color: rgba(255,255,255,0.3); }
+  .pos-action-btn.chosen.action-raise { background: #ff8a75; color: #0d1a14; border-color: rgba(255,255,255,0.3); }
+  .pos-action-btn.chosen.action-call { background: #7ec3f2; color: #0d1a14; border-color: rgba(255,255,255,0.3); }
+  .pos-action-btn.chosen.action-allin { background: #ff7fc4; color: #0d1a14; border-color: rgba(255,255,255,0.3); }
   .pos-action-btn:disabled {
     opacity: 0.28;
     cursor: not-allowed;
