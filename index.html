@@ -420,6 +420,7 @@
     min-height: 1.1em;
   }
   .chart-grid-wrap {
+    position: relative;
     flex: 1 1 auto;
     min-height: 0;
     min-width: 0;
@@ -437,6 +438,30 @@
     grid-template-rows: repeat(13, 1fr);
     gap: 1px;
     flex: 0 0 auto;
+    /* the equity computation behind a fresh grid takes ~1-1.5s; instead of the page just
+       freezing and then jump-cutting to the new chart, app.js dims the grid + shows a spinner
+       while it computes, then removes the dim class - this transition is what turns that removal
+       into a smooth fade-in instead of an instant swap. */
+    transition: opacity 0.18s ease;
+  }
+  .range-grid.grid-loading { opacity: 0.25; }
+  #grid-spinner {
+    display: none;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .grid-spinner-circle {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(212,164,55,0.22);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: grid-spinner-rotate 0.7s linear infinite;
+  }
+  @keyframes grid-spinner-rotate { to { transform: rotate(360deg); } }
   }
   .range-cell {
     display: flex;
@@ -709,7 +734,10 @@
     </div>
     <div id="chart-info"></div>
 
-    <div class="chart-grid-wrap"><div class="range-grid" id="range-grid"></div></div>
+    <div class="chart-grid-wrap">
+      <div class="range-grid" id="range-grid"></div>
+      <div id="grid-spinner"><div class="grid-spinner-circle"></div></div>
+    </div>
   </div>
 
   <div id="hand-done-panel" class="hand-done-banner" style="display:none;"></div>
@@ -2798,7 +2826,11 @@
     var wrap = document.querySelector('.chart-grid-wrap');
     var grid = document.getElementById('range-grid');
     if (!wrap || !grid) return;
-    var size = Math.max(60, Math.min(wrap.clientWidth, wrap.clientHeight) - 2);
+    // No artificial minimum here on purpose: at very short viewports the grid must be allowed to
+    // shrink as far as needed, because there's nowhere for the overflow to go (the whole app is
+    // overflow:hidden - clipped content would be permanently inaccessible, which is worse than a
+    // small grid).
+    var size = Math.max(20, Math.min(wrap.clientWidth, wrap.clientHeight) - 2);
     grid.style.width = size + 'px';
     grid.style.height = size + 'px';
   }
@@ -3023,14 +3055,39 @@
 
     var focusPos = state.focusPos || pending.pos;
     var ctx = findCardContext(focusPos, result) || { kind: 'pending', turn: pending, chosenAction: null };
-    var labelPrefix = ctx.turn.pos + (ctx.kind === 'decided' ? ' (' + (ACTION_LABEL[ctx.chosenAction] || ctx.chosenAction) + ' 선택)' : '');
+    renderGridAsync(ctx, result, tableSize, rangeStackBB);
+  }
 
-    if (ctx.turn.street === 'preflop') {
-      renderPreflopGrid(computePreflopBuckets(ctx.turn.pos, ctx.turn.level, ctx.turn.aggressorPos, tableSize, rangeStackBB), labelPrefix);
-    } else {
-      renderPostflopGrid(computePostflopBucketsForTurn(ctx.turn, result.turns, tableSize, rangeStackBB), ctx.turn.toCallBB > 0, labelPrefix);
-    }
-    fitRangeGrid();
+  // The 169-hand equity/range computation (computePreflopBuckets / computePostflopBucketsForTurn)
+  // takes a real ~1-1.5s on this machine, and since JS is single-threaded, running it directly
+  // inside the click handler used to freeze the whole page for that entire time - no repaint, no
+  // feedback, buttons feel unresponsive, then everything jumps at once when it's finally done.
+  // Splitting it into two ticks fixes that: this tick shows a spinner and dims the old grid (so
+  // the click's effect is felt IMMEDIATELY), then a setTimeout lets the browser actually paint
+  // that before the heavy computation runs; once the new grid HTML is in, removing the loading
+  // class fades it back in via the CSS transition on .range-grid instead of an abrupt swap.
+  // gridRenderToken guards against a slow older computation clobbering a newer one if the user
+  // clicks again before the first finishes.
+  var gridRenderToken = 0;
+  function renderGridAsync(ctx, result, tableSize, rangeStackBB) {
+    var token = ++gridRenderToken;
+    var gridEl = document.getElementById('range-grid');
+    var spinnerEl = document.getElementById('grid-spinner');
+    gridEl.classList.add('grid-loading');
+    if (spinnerEl) spinnerEl.style.display = 'flex';
+
+    setTimeout(function () {
+      if (token !== gridRenderToken) return; // superseded by a newer click - drop this result
+      var labelPrefix = ctx.turn.pos + (ctx.kind === 'decided' ? ' (' + (ACTION_LABEL[ctx.chosenAction] || ctx.chosenAction) + ' 선택)' : '');
+      if (ctx.turn.street === 'preflop') {
+        renderPreflopGrid(computePreflopBuckets(ctx.turn.pos, ctx.turn.level, ctx.turn.aggressorPos, tableSize, rangeStackBB), labelPrefix);
+      } else {
+        renderPostflopGrid(computePostflopBucketsForTurn(ctx.turn, result.turns, tableSize, rangeStackBB), ctx.turn.toCallBB > 0, labelPrefix);
+      }
+      if (spinnerEl) spinnerEl.style.display = 'none';
+      gridEl.classList.remove('grid-loading');
+      fitRangeGrid();
+    }, 20);
   }
 
   // ---------- hand lifecycle ----------
