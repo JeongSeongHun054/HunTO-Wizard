@@ -1323,11 +1323,11 @@
 
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./poker-core.js'));
+    module.exports = factory(require('./poker-core.js'), require('./poker-icm.js'));
   } else {
-    root.PokerPreflop = factory(root.PokerCore);
+    root.PokerPreflop = factory(root.PokerCore, root.PokerICM);
   }
-})(typeof self !== 'undefined' ? self : this, function (Core) {
+})(typeof self !== 'undefined' ? self : this, function (Core, ICM) {
   'use strict';
 
   // Position lists by table size (5 to 9 handed). Preflop action order, first-to-act to last.
@@ -1461,7 +1461,105 @@
     return STACK_TIER_ADJUST[stackTier(stackBB)];
   }
 
-  function openingRangeAtStack(pos, tableSize, stackBB) {
+  // ---- Push/fold shove-width curve for short/micro effective stacks ----
+  // At a genuinely shallow effective stack (<=20bb, see stackTier), a standard-sized open isn't
+  // real strategy - once money starts going in, both players are functionally committed to
+  // playing for stacks, so the only two real options are shove or fold, and how wide that shove
+  // range should be is a real push/fold-theory question, not a flat multiplier on the
+  // 100bb-calibrated open range (which is what this used to do, via `openMult` alone - a
+  // constant multiplier can't reproduce the actual SHAPE of a push/fold curve, which widens
+  // increasingly steeply as the stack keeps shrinking, not linearly).
+  //
+  // This was originally built as a live mutual-best-response (Nash) solve between hero's shove
+  // range and a big-blind-shaped calling range, iterated to convergence in-browser. In testing
+  // that approach turned out to be a dead end for this tool: with few enough Monte Carlo samples
+  // to run live it doesn't reliably converge (best-response iteration can oscillate rather than
+  // settle), and with enough samples to converge reliably it takes several seconds per stack
+  // change - a bad tradeoff for a chart meant to update instantly as you experiment with depths.
+  // So instead this is a smooth, monotonically-widening curve fit to widely-cited push/fold
+  // shove-range sizes at reference depths (the same "calibrate to published numbers" approach
+  // this whole file already uses for the 100bb open-raise sizes above - see OPEN_PCT_BY_SIZE).
+  // Anchors (position-agnostic average width; positional shape is layered on afterward): 20bb
+  // ~20%, 15bb ~32%, 10bb ~46%, 8bb ~55%, 6bb ~66%, 4bb ~84%.
+  const PUSH_FOLD_ANCHORS = [
+    { bb: 20, pct: 20 }, { bb: 18, pct: 24 }, { bb: 16, pct: 28 }, { bb: 15, pct: 32 },
+    { bb: 14, pct: 34 }, { bb: 12, pct: 39 }, { bb: 10, pct: 46 }, { bb: 8, pct: 55 },
+    { bb: 6, pct: 66 }, { bb: 5, pct: 74 }, { bb: 4, pct: 84 }, { bb: 2, pct: 96 },
+  ];
+  function pushFoldShovePct(stackBB, opts) {
+    opts = opts || {};
+    const icmPremium = opts.icmPremium || 0;
+    const pts = PUSH_FOLD_ANCHORS; // sorted descending by bb
+    let pct;
+    if (stackBB >= pts[0].bb) {
+      pct = pts[0].pct;
+    } else if (stackBB <= pts[pts.length - 1].bb) {
+      pct = pts[pts.length - 1].pct;
+    } else {
+      let lo = pts[pts.length - 1], hi = pts[0];
+      for (let i = 0; i < pts.length - 1; i++) {
+        if (stackBB <= pts[i].bb && stackBB >= pts[i + 1].bb) { hi = pts[i]; lo = pts[i + 1]; break; }
+      }
+      const t = (stackBB - lo.bb) / (hi.bb - lo.bb);
+      pct = lo.pct + t * (hi.pct - lo.pct);
+    }
+    // Same direction as the caller-tightens-under-ICM-pressure effect described below: real ICM
+    // pressure makes covering stacks call tighter, which means hero can profitably shove wider
+    // for the same fold equity - approximated here as a direct widening of the shove curve.
+    pct = pct * (1 + icmPremium * 2.5);
+    return Math.round(Math.min(96, pct) * 10) / 10;
+  }
+
+  // ---- ICM premium: how much extra equity a call/stack-off needs under tournament pressure ----
+  // Chip-EV pot odds ("callCost / potAfterCall") are the right bar in a cash game, where a chip
+  // is always worth the same. In a tournament, busting is disproportionately costly relative to
+  // the $EV lost (you can't rebuy your finishing position), so real-money-adjusted equity
+  // requirements are higher - the ICM premium. Computed here from the actual Malmuth-Harville
+  // ICM model (poker-icm.js), not a flat guess: a representative "hero shoves their stack into
+  // an average-stacked opponent at 50/50 chip equity" spot is run through the ICM model for a
+  // fixed reference tournament shape (mid-size field, ~15% paid, moderately top-heavy payouts -
+  // a deliberately generic mid-stage MTT scenario, since the range chart doesn't collect exact
+  // field size / payout structure from the user). The gap between the ICM-adjusted breakeven
+  // equity and the chip-EV breakeven equity (50%) at that reference spot is the premium applied
+  // everywhere a tournament calling/stacking-off decision is evaluated.
+  const ICM_REFERENCE = { remainingPlayers: 20, paidPlaces: 12, topHeaviness: 1.5, avgStackBB: 35 };
+  const _icmPremiumCache = {};
+  function icmPremiumForTournament(stackBB) {
+    if (!ICM) return 0;
+    const key = Math.round(stackBB * 2) / 2;
+    if (_icmPremiumCache[key] !== undefined) return _icmPremiumCache[key];
+    const cfg = ICM_REFERENCE;
+    const stacks = [stackBB];
+    for (let i = 1; i < cfg.remainingPlayers; i++) stacks.push(cfg.avgStackBB);
+    const payouts = ICM.generatePayoutWeights(cfg.paidPlaces, cfg.topHeaviness);
+    const result = ICM.analyzeICMDecision({
+      stacks, payouts, heroIdx: 0, villainIdx: 1,
+      potBB: 1.5, toCallBB: stackBB, equity: 0.5,
+    });
+    const premium = Math.max(0, Math.min(0.15, result.icmPremium));
+    _icmPremiumCache[key] = premium;
+    return premium;
+  }
+
+  function openingRangeAtStack(pos, tableSize, stackBB, opts) {
+    opts = opts || {};
+    const tier = stackTier(stackBB);
+    if (tier === 'short' || tier === 'micro') {
+      // Position still matters at push/fold depths (UTG has more players left to act behind -
+      // more cumulative calling risk - than the button), but solving a full N-way equilibrium
+      // per seat is out of scope here. Instead, solve the position-agnostic "vs one BB defender"
+      // equilibrium width once per stack depth (the expensive part), then scale it by this
+      // position's existing relative openness vs the table's average 100bb-calibrated open
+      // (which already correctly encodes "earlier seats play tighter") - blends the rigorous
+      // stack-depth math with the already-calibrated positional shape.
+      const basePct = pushFoldShovePct(stackBB, opts);
+      const table = OPEN_PCT_BY_SIZE[tableSize] || OPEN_PCT_BY_SIZE[6];
+      const values = Object.keys(table).map((k) => table[k]);
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const posWeight = (table[pos] || avg) / avg;
+      const pct = Math.min(100, basePct * posWeight);
+      return buildRangeSet(pct);
+    }
     const adj = stackTierAdjust(stackBB);
     const pct = Math.min(100, openThreshold(pos, tableSize) * adj.openMult);
     return buildRangeSet(pct);
@@ -1584,6 +1682,7 @@
       const seatsBehind = order.length - 1 - order.indexOf(heroPos);
       requiredEquity += inPosition(heroPos, openerPos, tableSize) ? -0.012 : 0.018;
       requiredEquity -= Math.max(0, 4 - seatsBehind) * 0.003;
+      requiredEquity += opts.icmPremium || 0; // real ICM pressure, not a flat stack fudge - see icmPremiumForTournament
 
       if (eq.equity >= requiredEquity) {
         return {
@@ -1638,6 +1737,7 @@
       const potAfterCall = potBB + callAmount;
       let requiredEquity = callAmount / potAfterCall;
       requiredEquity += playabilityAdjustment(canon) + 0.03; // extra caution facing 3bet (narrower, stronger range)
+      requiredEquity += opts.icmPremium || 0;
 
       if (eq.equity >= requiredEquity) {
         return {
@@ -1677,6 +1777,7 @@
       const potAfterCall = potBB + callAmount;
       let requiredEquity = callAmount / potAfterCall;
       requiredEquity += playabilityAdjustment(canon) + 0.05; // extra caution vs a very strong 4-bet range
+      requiredEquity += opts.icmPremium || 0;
 
       if (eq.equity >= requiredEquity) {
         return {
@@ -1716,7 +1817,9 @@
     const buckets = { fold: new Set(), call: new Set(), raise: new Set() };
     for (const canon of Core.RANKED_169) {
       const cards = representativeCards(canon);
-      const result = decidePreflop(cards, heroPos, facing, { tableSize, rng: opts.rng, iterations: opts.iterations || 150 });
+      const result = decidePreflop(cards, heroPos, facing, {
+        tableSize, rng: opts.rng, iterations: opts.iterations || 150, icmPremium: opts.icmPremium,
+      });
       buckets[result.action].add(canon);
     }
     return buckets;
@@ -1730,6 +1833,7 @@
     stackTier, stackTierAdjust, openingRangeAtStack, threeBetRangeAtStack, fourBetRangeAtStack,
     sizing, playabilityAdjustment, decidePreflop,
     representativeCards, rangeBucketsForFacing,
+    pushFoldShovePct, icmPremiumForTournament,
   };
 });
 </script>
@@ -2522,12 +2626,15 @@
     });
   }
 
-  // ---------- effective stack for range-tier lookups ----------
-  // Tournament play carries more fold-equity/ICM pressure than a cash game at the same bb-stack,
-  // so ranges get modeled slightly wider at a given nominal stack - a modest, explicitly
-  // approximate adjustment (see poker-preflop.js's stack-tier comments for the same framing).
-  function effectiveStackForRanges() {
-    return state.gameType === 'tournament' ? round1(state.stackBB * 0.85) : state.stackBB;
+  // ---------- ICM pressure for tournament mode ----------
+  // Used to just pretend the stack was ~15% shorter than it actually is as a stand-in for "more
+  // ICM pressure" - a made-up number with no real ICM math behind it. Now computed for real via
+  // poker-icm.js's Malmuth-Harville model (see Preflop.icmPremiumForTournament): how much extra
+  // equity a call/stack-off needs to clear at a representative mid-stage MTT shape, fed directly
+  // into the calling-equity thresholds and the push/fold shove width instead of faking a smaller
+  // stack.
+  function icmPremiumNow() {
+    return state.gameType === 'tournament' ? Preflop.icmPremiumForTournament(state.stackBB) : 0;
   }
 
   // ---------- turn-order engine ----------
@@ -2693,38 +2800,55 @@
     return ['fold', 'call', 'allin'];
   }
 
+  // Reference pot size (bb) right before hero acts at each preflop level, matching the same
+  // fixed sizing constants used throughout this file (open 2.3bb, 3bet 6.9bb, 4bet 16bb).
+  var POT_BEFORE_LEVEL = [1.5, 3.8, 10.7, 24.4];
+
+  // How much of a raise range should show as "allin" instead, as a plain function of how much
+  // stack is left BEHIND that raise relative to the pot it creates (SPR) - not a fixed % or a
+  // named stack-tier gate. A 3bet/4bet that leaves a huge stack-to-pot ratio behind (deep stack)
+  // is a genuinely different action from shoving and should never get auto-labeled allin; one
+  // that leaves almost nothing behind (SPR near 1) basically IS a shove already, so the whole
+  // raise range converges to allin; in between, the fraction converts smoothly rather than
+  // jumping at an arbitrary stack-size cutoff.
+  function allinSplitPctForLevel(level, stackBB) {
+    var raiseSizeBB = sizingForTurn({ street: 'preflop', level: level, stackBB: stackBB, action: 'raise' }).totalBB;
+    var potAfter = POT_BEFORE_LEVEL[level] + raiseSizeBB;
+    var stackBehind = Math.max(0, stackBB - raiseSizeBB);
+    var spr = potAfter > 0 ? stackBehind / potAfter : 0;
+    if (spr <= 1.0) return 100;
+    if (spr >= 6.0) return 0;
+    var t = (6.0 - spr) / (6.0 - 1.0); // 0 (deep) .. 1 (about to be committed anyway)
+    return Math.round(t * t * 100);
+  }
+
   // ---------- preflop range buckets for the position currently on turn (stack-depth aware) ----------
-  function computePreflopBuckets(pos, level, aggressorPos, tableSize, stackBB) {
-    var adj = Preflop.stackTierAdjust(stackBB);
+  function computePreflopBuckets(pos, level, aggressorPos, tableSize, stackBB, icmPremium) {
+    icmPremium = icmPremium || 0;
     var iterations = 150;
     var raiseSet = new Set(), callSet = new Set(), allinSet = new Set();
 
     if (level === 0) {
-      raiseSet = Preflop.openingRangeAtStack(pos, tableSize, stackBB);
-      if (adj.allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
+      raiseSet = Preflop.openingRangeAtStack(pos, tableSize, stackBB, { icmPremium: icmPremium });
+      if (Preflop.stackTierAdjust(stackBB).allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
     } else if (level === 1) {
       raiseSet = Preflop.threeBetRangeAtStack(pos, aggressorPos, tableSize, stackBB);
       var facingOpen = { type: 'open', openerPos: aggressorPos, sizeBB: 2.3, potBB: 3.8, toCallBB: 2.3 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: iterations }).call;
-      // Only carve a top slice of the raise range into "allin" when the stack is actually
-      // shallow enough that stacking off is realistic (mid/short/micro tiers). At a deep
-      // (40bb+) stack, a 3bet sizing (~6.9bb) leaves a huge stack-to-pot ratio behind, so
-      // shoving AA over an open instead of 3betting it is not a real strategy - it should
-      // just show as "raise" like every other hand in the range, not get auto-labeled allin.
-      if (adj.allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
-      else if (Preflop.stackTier(stackBB) !== 'deep') splitTopAsAllin(raiseSet, allinSet, 1.5);
+      callSet = Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: iterations, icmPremium: icmPremium }).call;
+      var pct1 = allinSplitPctForLevel(1, stackBB);
+      if (pct1 >= 100) { allinSet = raiseSet; raiseSet = new Set(); }
+      else if (pct1 > 0) splitTopAsAllin(raiseSet, allinSet, pct1);
     } else if (level === 2) {
       raiseSet = Preflop.fourBetRangeAtStack(pos, stackBB);
       var facingThreeBet = { type: 'threebet', openerPos: pos, threebettorPos: aggressorPos, sizeBB: 6.9, potBB: 10.7, toCallBB: 4.6 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: iterations }).call;
-      // Same reasoning as level 1: only meaningful once the stack tier is shallow enough that
-      // a 4bet-sized raise is already close to committing the stack.
-      if (adj.allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
-      else if (Preflop.stackTier(stackBB) !== 'deep') splitTopAsAllin(raiseSet, allinSet, 1.0);
+      callSet = Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: iterations, icmPremium: icmPremium }).call;
+      var pct2 = allinSplitPctForLevel(2, stackBB);
+      if (pct2 >= 100) { allinSet = raiseSet; raiseSet = new Set(); }
+      else if (pct2 > 0) splitTopAsAllin(raiseSet, allinSet, pct2);
     } else {
       // level 3: facing a 4bet, bounded model (call or allin only, no 5bet)
       var facingFourBet = { type: 'fourbet', fourbettorPos: aggressorPos, sizeBB: 16, potBB: 24.4, toCallBB: 9.1 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingFourBet, tableSize, { iterations: iterations }).call;
+      callSet = Preflop.rangeBucketsForFacing(pos, facingFourBet, tableSize, { iterations: iterations, icmPremium: icmPremium }).call;
       allinSet = Preflop.fourBetRangeAtStack(pos, stackBB);
       allinSet.forEach(function (c) { callSet.delete(c); });
     }
@@ -2956,12 +3080,11 @@
     if (!result.pending) { stripEl.innerHTML = ''; return; }
     var tableSize = state.tableSize;
     var stackBB = state.stackBB;
-    var rangeStackBB = effectiveStackForRanges();
     var targetStreet = result.pending.street;
     var order = targetStreet === 'preflop'
       ? Preflop.positionsFor(tableSize)
       : Preflop.postflopOrderFor(tableSize).filter(function (p) { return !result.folded[p]; });
-    var allRaisesAreAllin = targetStreet === 'preflop' && Preflop.stackTierAdjust(rangeStackBB).allRaisesAreAllin;
+    var allRaisesAreAllin = targetStreet === 'preflop' && Preflop.stackTierAdjust(stackBB).allRaisesAreAllin;
 
     var html = order.map(function (pos) {
       var ctx = findCardContext(pos, result);
@@ -3048,7 +3171,6 @@
   function renderHand() {
     var tableSize = state.tableSize;
     var stackBB = state.stackBB;
-    var rangeStackBB = effectiveStackForRanges();
     var result = replayHand(state.hand.actions, tableSize, stackBB, state.hand.board);
 
     if (result.street === 'done') {
@@ -3068,7 +3190,7 @@
 
     var focusPos = state.focusPos || pending.pos;
     var ctx = findCardContext(focusPos, result) || { kind: 'pending', turn: pending, chosenAction: null };
-    renderGridAsync(ctx, result, tableSize, rangeStackBB);
+    renderGridAsync(ctx, result, tableSize, stackBB);
   }
 
   // The 169-hand equity/range computation (computePreflopBuckets / computePostflopBucketsForTurn)
@@ -3082,7 +3204,7 @@
   // gridRenderToken guards against a slow older computation clobbering a newer one if the user
   // clicks again before the first finishes.
   var gridRenderToken = 0;
-  function renderGridAsync(ctx, result, tableSize, rangeStackBB) {
+  function renderGridAsync(ctx, result, tableSize, stackBB) {
     var token = ++gridRenderToken;
     var gridEl = document.getElementById('range-grid');
     var spinnerEl = document.getElementById('grid-spinner');
@@ -3093,9 +3215,9 @@
       if (token !== gridRenderToken) return; // superseded by a newer click - drop this result
       var labelPrefix = ctx.turn.pos + (ctx.kind === 'decided' ? ' (' + (ACTION_LABEL[ctx.chosenAction] || ctx.chosenAction) + ' 선택)' : '');
       if (ctx.turn.street === 'preflop') {
-        renderPreflopGrid(computePreflopBuckets(ctx.turn.pos, ctx.turn.level, ctx.turn.aggressorPos, tableSize, rangeStackBB), labelPrefix);
+        renderPreflopGrid(computePreflopBuckets(ctx.turn.pos, ctx.turn.level, ctx.turn.aggressorPos, tableSize, stackBB, icmPremiumNow()), labelPrefix);
       } else {
-        renderPostflopGrid(computePostflopBucketsForTurn(ctx.turn, result.turns, tableSize, rangeStackBB), ctx.turn.toCallBB > 0, labelPrefix);
+        renderPostflopGrid(computePostflopBucketsForTurn(ctx.turn, result.turns, tableSize, stackBB), ctx.turn.toCallBB > 0, labelPrefix);
       }
       if (spinnerEl) spinnerEl.style.display = 'none';
       gridEl.classList.remove('grid-loading');
