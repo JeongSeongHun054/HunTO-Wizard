@@ -2502,6 +2502,280 @@
 });
 </script>
 <script>
+// ===== ClaudePoker Postflop CFR Module =====
+// Real regret-matching CFR+ solve of the CURRENT street's betting subgame (check/bet -> facing
+// bet: fold/call/raise -> facing raise: fold/call/allin), replacing poker-postflop.js's heuristic
+// equity-margin thresholds and canned range-narrowing fractions, the same way poker-cfr.js
+// replaced the preflop heuristic tables.
+//
+// ---- Why bucket abstraction (unlike the preflop solve's exact 169-hand resolution) ----
+// Preflop's equity matrix is board-independent, so it could be precomputed ONCE, offline, and
+// reused forever - the live solve only had to do CFR arithmetic over a fixed, already-known
+// 169x169 table. Postflop equity depends on the SPECIFIC board (flop/turn/river cards), which is
+// different every hand, so this equity matrix cannot be precomputed - it has to be built fresh,
+// live, every time the user reaches a new postflop decision. A live, from-scratch 169x169
+// Monte Carlo equity matrix (14365 pairs) takes minutes even offline (see build-equity-matrix.js's
+// own runtime) - completely infeasible to redo live on every street. So instead of solving over
+// all 169 individual hands, this ranks all 169 canonical hands by equity vs the villain's range on
+// THIS board and groups them into a small number of buckets (K, default 8), then solves the CFR
+// game over bucket-vs-bucket equity instead of hand-vs-hand equity. This is the same abstraction
+// technique real solvers (PioSolver, GTO+, etc.) use out of necessity, just at a coarser
+// resolution appropriate for a live in-browser solve - it trades exact per-hand resolution for
+// tractable speed, and every hand within a bucket shows the identical solved frequency (a real,
+// visible, honestly-labeled simplification, not claimed to be hand-exact).
+//
+// ---- Why only 3 nodes (one shallower than preflop's 4) ----
+// Postflop's own action model already caps raising one level earlier than preflop's (see app.js
+// actionsAvailable: postflop level>=2 is already the terminal fold/call/allin tier, there's no
+// level 3). So the tree here is: PFO (check/bet) -> PVR (facing bet: fold/call/raise) -> PH3
+// (facing raise: fold/call/allin). PH3's allin branch is valued directly via showdown-equivalent
+// bucket equity (no separate "villain facing hero's allin" node) - consistent with preflop's own
+// "raw equity as terminal value for a non-showdown call" simplification, just one level earlier.
+//
+// ---- Multi-street scope ----
+// This solves ONLY the current street's betting action, using Monte Carlo equity (which already
+// integrates over all remaining runouts to the river) as the payoff for any "call" or "check" that
+// doesn't end in a fold - i.e., check/call are valued AS IF the hand were settled by current
+// all-in-equivalent equity, not by actually modeling hero's or villain's future turn/river betting
+// decisions. This does NOT model bet-sizing choices on later streets, check-raises after a check,
+// or multi-street bluff/value construction across streets - each street the user reaches gets its
+// own fresh, independent solve. A true multi-street solve (turn/river chance nodes feeding into
+// further betting subgames) is a substantially larger undertaking flagged as future work.
+
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./poker-core.js'));
+  } else {
+    root.PokerPostflopCFR = factory(root.PokerCore);
+  }
+})(typeof self !== 'undefined' ? self : this, function (Core) {
+  'use strict';
+
+  var HANDS = Core.RANKED_169;
+
+  function comboCount(canon) { if (canon.length === 2) return 6; return canon[2] === 's' ? 4 : 12; }
+
+  var DEFAULT_K = 8;
+  var BUCKET_ITERATIONS = 100; // per-hand equity vs villain range, for ranking into buckets
+  var MATRIX_ITERATIONS = 150; // per bucket-pair equity, for the CFR payoff matrix
+  var CFR_ITERATIONS = 400;
+
+  // Rank all 169 canonical hands (minus board conflicts) by equity vs villainRange, then split
+  // into K buckets by cumulative COMBO weight (not hand-type count) - same combo-weighted
+  // percentile philosophy as the preflop module's field-weighting.
+  function buildBuckets(board, villainRange, K, opts) {
+    opts = opts || {};
+    var iterations = opts.iterations || BUCKET_ITERATIONS;
+    var rng = opts.rng || Math.random;
+    var villainCombos = Core.expandRangeToCombos(villainRange, board);
+
+    var rows = [];
+    HANDS.forEach(function (canon) {
+      var heroCards = Core.representativeCardsAvoiding(canon, board);
+      if (!heroCards) return; // impossible on this board (uses a board card)
+      var eq = Core.simulateEquity(heroCards, villainCombos, board, { iterations: iterations, rng: rng });
+      rows.push({ canon: canon, heroCards: heroCards, equity: eq.equity, combos: comboCount(canon) });
+    });
+    rows.sort(function (a, b) { return b.equity - a.equity; });
+
+    var totalCombos = rows.reduce(function (s, r) { return s + r.combos; }, 0);
+    var bucketOf = {};
+    var heroWeight = new Float64Array(K);
+    var villainWeight = new Float64Array(K);
+    var bucketRows = [];
+    for (var k = 0; k < K; k++) bucketRows.push([]);
+    var acc = 0;
+    rows.forEach(function (r) {
+      var b = Math.floor((acc / totalCombos) * K);
+      if (b >= K) b = K - 1;
+      bucketOf[r.canon] = b;
+      heroWeight[b] += r.combos;
+      if (villainRange.has(r.canon)) villainWeight[b] += r.combos;
+      bucketRows[b].push(r);
+      acc += r.combos;
+    });
+    // representative combo per bucket = median-equity member (single combo, not averaged - see
+    // module header on the speed/robustness tradeoff this was tuned against).
+    var repCombo = bucketRows.map(function (list) {
+      if (list.length === 0) return null;
+      return list[Math.floor(list.length / 2)].heroCards;
+    });
+    return { bucketOf: bucketOf, heroWeight: heroWeight, villainWeight: villainWeight, repCombo: repCombo, K: K };
+  }
+
+  function triIndex(i, j, K) { if (i > j) { var t = i; i = j; j = t; } return i * K - (i * (i - 1)) / 2 + (j - i); }
+
+  function buildEquityMatrix(repCombo, board, K, opts) {
+    opts = opts || {};
+    var iterations = opts.iterations || MATRIX_ITERATIONS;
+    var rng = opts.rng || Math.random;
+    var flat = new Float64Array((K * (K + 1)) / 2);
+    for (var i = 0; i < K; i++) {
+      for (var j = i; j < K; j++) {
+        var a = repCombo[i], b = repCombo[j];
+        if (!a || !b) { flat[triIndex(i, j, K)] = 0.5; continue; }
+        var eq = Core.simulateEquity(a, [b], board, { iterations: iterations, rng: rng });
+        flat[triIndex(i, j, K)] = eq.n > 0 ? eq.equity : 0.5;
+      }
+    }
+    return { eq: function (i, j) { var idx = triIndex(i, j, K); var v = flat[idx]; return i <= j ? v : 1 - v; } };
+  }
+
+  // mode: 'first-in' | 'facing-bet' | 'facing-raise' - see module header.
+  function solveCFR(weightA, weightB, eqMatrix, sz, K, iterations, mode) {
+    var regretPFO = new Float64Array(K * 2), stratPFO = new Float64Array(K * 2);
+    var regretPVR = new Float64Array(K * 3), stratPVR = new Float64Array(K * 3);
+    var regretPH3 = new Float64Array(K * 3), stratPH3 = new Float64Array(K * 3);
+    var sA2 = new Float64Array(2), sB3 = new Float64Array(3), sA3 = new Float64Array(3);
+
+    var fixedBet = mode === 'facing-bet' || mode === 'facing-raise';
+    var fixedRaise = mode === 'facing-raise';
+
+    function matchPFO(i) {
+      if (fixedBet) { sA2[0] = 0; sA2[1] = 1; return; }
+      var r0 = Math.max(0, regretPFO[i * 2]), r1 = Math.max(0, regretPFO[i * 2 + 1]);
+      var sum = r0 + r1;
+      if (sum <= 1e-9) { sA2[0] = 0.5; sA2[1] = 0.5; } else { sA2[0] = r0 / sum; sA2[1] = r1 / sum; }
+    }
+    function matchPVR(j) {
+      if (fixedRaise) { sB3[0] = 0; sB3[1] = 0; sB3[2] = 1; return; }
+      var b = j * 3;
+      var r0 = Math.max(0, regretPVR[b]), r1 = Math.max(0, regretPVR[b + 1]), r2 = Math.max(0, regretPVR[b + 2]);
+      var sum = r0 + r1 + r2;
+      if (sum <= 1e-9) { sB3[0] = sB3[1] = sB3[2] = 1 / 3; } else { sB3[0] = r0 / sum; sB3[1] = r1 / sum; sB3[2] = r2 / sum; }
+    }
+    function matchPH3(i) {
+      var b = i * 3;
+      var r0 = Math.max(0, regretPH3[b]), r1 = Math.max(0, regretPH3[b + 1]), r2 = Math.max(0, regretPH3[b + 2]);
+      var sum = r0 + r1 + r2;
+      if (sum <= 1e-9) { sA3[0] = sA3[1] = sA3[2] = 1 / 3; } else { sA3[0] = r0 / sum; sA3[1] = r1 / sum; sA3[2] = r2 / sum; }
+    }
+
+    for (var iter = 0; iter < iterations; iter++) {
+      var t = iter + 1;
+      for (var i = 0; i < K; i++) {
+        var wA = weightA[i];
+        if (wA <= 0) continue;
+        for (var j = 0; j < K; j++) {
+          var cw = wA * weightB[j];
+          if (cw <= 0) continue;
+          var e = eqMatrix.eq(i, j);
+
+          matchPFO(i);
+          var valCheck = e * sz.pot;
+
+          matchPVR(j);
+          var valFoldPVR = sz.pot;
+          var valCallPVR = e * (sz.pot + 2 * sz.bet) - sz.bet;
+
+          matchPH3(i);
+          var valFoldPH3 = -sz.bet;
+          var valCallPH3 = e * (sz.pot + 2 * sz.raise) - sz.raise;
+          var valAllinPH3 = e * (sz.pot + 2 * sz.allin) - sz.allin;
+          var nodeValuePH3 = sA3[0] * valFoldPH3 + sA3[1] * valCallPH3 + sA3[2] * valAllinPH3;
+          {
+            var cfWh = cw * sB3[2];
+            var bh = i * 3;
+            regretPH3[bh] = Math.max(0, regretPH3[bh] + cfWh * (valFoldPH3 - nodeValuePH3));
+            regretPH3[bh + 1] = Math.max(0, regretPH3[bh + 1] + cfWh * (valCallPH3 - nodeValuePH3));
+            regretPH3[bh + 2] = Math.max(0, regretPH3[bh + 2] + cfWh * (valAllinPH3 - nodeValuePH3));
+            var wth = t * cw * sA2[1];
+            stratPH3[bh] += wth * sA3[0];
+            stratPH3[bh + 1] += wth * sA3[1];
+            stratPH3[bh + 2] += wth * sA3[2];
+          }
+
+          var valRaisePVR = nodeValuePH3;
+          var nodeValuePVR = sB3[0] * valFoldPVR + sB3[1] * valCallPVR + sB3[2] * valRaisePVR;
+          {
+            var cfWv = cw * sA2[1];
+            var bv = j * 3;
+            regretPVR[bv] = Math.max(0, regretPVR[bv] + cfWv * (nodeValuePVR - valFoldPVR));
+            regretPVR[bv + 1] = Math.max(0, regretPVR[bv + 1] + cfWv * (nodeValuePVR - valCallPVR));
+            regretPVR[bv + 2] = Math.max(0, regretPVR[bv + 2] + cfWv * (nodeValuePVR - valRaisePVR));
+            var wtv = t * cw;
+            stratPVR[bv] += wtv * sB3[0];
+            stratPVR[bv + 1] += wtv * sB3[1];
+            stratPVR[bv + 2] += wtv * sB3[2];
+          }
+
+          var valBetPFO = nodeValuePVR;
+          var nodeValuePFO = sA2[0] * valCheck + sA2[1] * valBetPFO;
+          {
+            var bo = i * 2;
+            regretPFO[bo] = Math.max(0, regretPFO[bo] + cw * (valCheck - nodeValuePFO));
+            regretPFO[bo + 1] = Math.max(0, regretPFO[bo + 1] + cw * (valBetPFO - nodeValuePFO));
+            var wto = t * cw;
+            stratPFO[bo] += wto * sA2[0];
+            stratPFO[bo + 1] += wto * sA2[1];
+          }
+        }
+      }
+    }
+
+    function normalize(arr, numActions) {
+      var out = new Float64Array(K * numActions);
+      for (var i = 0; i < K; i++) {
+        var sum = 0;
+        for (var a = 0; a < numActions; a++) sum += arr[i * numActions + a];
+        for (var a2 = 0; a2 < numActions; a2++) out[i * numActions + a2] = sum > 0 ? arr[i * numActions + a2] / sum : 1 / numActions;
+      }
+      return out;
+    }
+    return { PFO: normalize(stratPFO, 2), PVR: normalize(stratPVR, 3), PH3: normalize(stratPH3, 3) };
+  }
+
+  /**
+   * Top-level solve for the current postflop decision.
+   * @param {string[]} board - 3, 4, or 5 cards
+   * @param {Set<string>} villainRange - canonical hands representing villain's inferred range
+   * @param {object} opts
+   *   potBB: pot size entering this street's action
+   *   toCallBB: 0 if hero is first to act / facing a check; > 0 if hero already faces a bet/raise
+   *   betBB: the bet size ALREADY on the table if toCallBB > 0 (ignored if toCallBB is 0)
+   *   raiseBB: the raise-to size ALREADY on the table if hero is facing a raise (mode='facing-raise')
+   *   stackBehindBB: remaining effective stack, used as the allin size
+   *   mode: 'first-in' | 'facing-bet' | 'facing-raise' (caller determines from turn.level)
+   *   K: bucket count (default 8)
+   * @returns {object} { bucketOf, heroWeight, villainWeight, node: {PFO,PVR,PH3}, K }
+   */
+  function solve(board, villainRange, opts) {
+    opts = opts || {};
+    var K = opts.K || DEFAULT_K;
+    var mode = opts.mode || 'first-in';
+    var potBB = opts.potBB || 10;
+    var betBB = mode === 'first-in' ? Math.round(potBB * 0.65 * 10) / 10 : (opts.betBB || Math.round(potBB * 0.65 * 10) / 10);
+    var raiseBB = mode === 'facing-raise' ? (opts.raiseBB || Math.round(betBB * 2.5 * 10) / 10) : Math.round(betBB * 2.5 * 10) / 10;
+    var allinBB = Math.max(raiseBB, opts.stackBehindBB || potBB * 6);
+
+    var buckets = buildBuckets(board, villainRange, K, { iterations: opts.bucketIterations });
+    var mat = buildEquityMatrix(buckets.repCombo, board, K, { iterations: opts.matrixIterations });
+    var sz = { pot: potBB, bet: betBB, raise: raiseBB, allin: allinBB };
+
+    // Hero is always raw combo-weighted (chart shows "what if hero held every possible hand");
+    // villain is always range-restricted. Which one plays roleA (acts first in THIS subgame,
+    // possibly already fixed by a real action that already happened) vs roleB depends on mode.
+    var weightA, weightB;
+    if (mode === 'first-in') { weightA = buckets.heroWeight; weightB = buckets.villainWeight; }
+    else if (mode === 'facing-bet') { weightA = buckets.villainWeight; weightB = buckets.heroWeight; }
+    else { weightA = buckets.heroWeight; weightB = buckets.villainWeight; } // facing-raise: hero bet (roleA), villain raised (roleB)
+
+    var solved = solveCFR(weightA, weightB, mat, sz, K, opts.cfrIterations || CFR_ITERATIONS, mode);
+
+    // Re-orient the solved nodes so callers can always read "hero's" strategy directly regardless
+    // of which role hero occupied internally.
+    var heroIsRoleA = mode !== 'facing-bet';
+    return {
+      bucketOf: buckets.bucketOf, heroWeight: buckets.heroWeight, villainWeight: buckets.villainWeight, K: K,
+      mode: mode, heroIsRoleA: heroIsRoleA,
+      PFO: solved.PFO, PVR: solved.PVR, PH3: solved.PH3,
+    };
+  }
+
+  return { solve: solve, buildBuckets: buildBuckets, buildEquityMatrix: buildEquityMatrix, solveCFR: solveCFR };
+});
+</script>
+<script>
 // ===== ClaudePoker Scenario Generator =====
 // Simulates a full heads-up hand (preflop through river) using the engine's own bot logic
 // for BOTH seats, recording every decision point along the way. The trainer then picks one
@@ -2844,6 +3118,7 @@
   var Preflop = window.PokerPreflop;
   var Postflop = window.PokerPostflop;
   var CFR = window.PokerCFR;
+  var PostflopCFR = window.PokerPostflopCFR;
 
   var SUIT_SYMBOL = { s: '♠', h: '♥', d: '♦', c: '♣' };
   var SUIT_RED = { h: true, d: true, s: false, c: false };
@@ -3298,30 +3573,82 @@
     return Core.topPercent(60);
   }
 
+  // All turns recorded on the SAME street as `turn` (chronological, since allTurns is flat and
+  // append-only) - used to reconstruct "pot at the start of this street" and the actual bet/raise
+  // sizes that already happened this street, rather than re-deriving them from a generic sizing
+  // formula (which would be wrong for what ALREADY happened, only right for hypothetical future
+  // actions the CFR solve is actually choosing between).
+  function streetTurns(turn, allTurns) {
+    return allTurns.filter(function (t) { return t.street === turn.street; });
+  }
+  function streetStartPotBB(turn, allTurns) {
+    var st = streetTurns(turn, allTurns);
+    return st.length ? st[0].potBB : turn.potBB;
+  }
+  function priorAggressiveSizesThisStreet(turn, allTurns) {
+    return streetTurns(turn, allTurns)
+      .filter(function (t) { return t.action === 'bet' || t.action === 'raise' || t.action === 'allin'; })
+      .map(function (t) { return t.sizeBB; });
+  }
+
+  // ---------- CFR-based postflop range buckets (see poker-postflop-cfr.js for the solve itself) ----------
   function computePostflopBucketsForTurn(turn, allTurns, tableSize, stackBB) {
     var villainRange = new Set();
     turn.liveOpponents.forEach(function (p) {
       var r = deriveRangeForPos(p, allTurns, tableSize, stackBB);
       r.forEach(function (c) { villainRange.add(c); });
     });
-    var postflopOrder = Preflop.postflopOrderFor(tableSize);
-    var heroIdx = postflopOrder.indexOf(turn.pos);
-    var heroInPosition = turn.liveOpponents.length > 0 && turn.liveOpponents.every(function (p) {
-      return postflopOrder.indexOf(p) < heroIdx;
+    if (villainRange.size === 0) villainRange = Core.topPercent(60); // guard: never solve against an empty range
+
+    var potBB = streetStartPotBB(turn, allTurns);
+    var priorSizes = priorAggressiveSizesThisStreet(turn, allTurns);
+    var mode, opts = { potBB: potBB, stackBehindBB: stackBB };
+    if (turn.level === 0) {
+      mode = 'first-in';
+    } else if (turn.level === 1) {
+      mode = 'facing-bet';
+      opts.betBB = priorSizes[0] || round1(potBB * 0.65);
+    } else {
+      mode = 'facing-raise';
+      opts.betBB = priorSizes[0] || round1(potBB * 0.65);
+      opts.raiseBB = priorSizes[1] || round1(opts.betBB * 2.5);
+    }
+    opts.mode = mode;
+
+    var solved = PostflopCFR.solve(turn.board, villainRange, opts);
+    var node = mode === 'first-in' ? solved.PFO : mode === 'facing-bet' ? solved.PVR : solved.PH3;
+    var actions = mode === 'first-in' ? ['check', 'bet'] : mode === 'facing-bet' ? ['fold', 'call', 'raise'] : ['fold', 'call', 'allin'];
+    var numActions = actions.length;
+
+    var freq = {};
+    var sets = { fold: new Set(), check: new Set(), call: new Set(), bet: new Set(), raise: new Set(), allin: new Set() };
+    Core.RANKED_169.forEach(function (canon) {
+      var bucket = solved.bucketOf[canon];
+      var entry = {};
+      if (bucket === undefined) { entry.fold = 100; freq[canon] = entry; sets.fold.add(canon); return; } // impossible on this board
+      var best = null, bestP = -1;
+      for (var a = 0; a < numActions; a++) {
+        var p = node[bucket * numActions + a];
+        if (p > 0.001) entry[actions[a]] = pct1dp(p);
+        if (p > bestP) { bestP = p; best = actions[a]; }
+      }
+      freq[canon] = entry;
+      sets[best].add(canon); // dominant-action membership, for the header count line
     });
-    var heroIsAggressor = turn.pos === turn.handAggressorPos;
-    var betBB = turn.toCallBB > 0 ? turn.toCallBB : round1(turn.potBB * 0.65);
-    return Postflop.rangeBucketsOnBoard(turn.board, {
-      potBB: turn.potBB, toCallBB: turn.toCallBB, betBB: betBB,
-      villainRange: villainRange, heroIsAggressor: heroIsAggressor, heroInPosition: heroInPosition,
-      iterations: 100, rng: Math.random,
-    });
+
+    return { fold: sets.fold, check: sets.check, call: sets.call, bet: sets.bet, raise: sets.raise, allin: sets.allin, freq: freq, mode: mode };
   }
 
   // ---------- rendering ----------
   // Fixed left-to-right stacking order for mixed-frequency cells, matching the legend order.
-  var FREQ_ACTION_ORDER = ['raise', 'allin', 'call', 'fold'];
-  var FREQ_ACTION_COLOR = { raise: '#c0442f', allin: '#9b2fd6', call: '#2f6f8f', fold: 'rgba(255,255,255,0.14)' };
+  // check/bet only ever appear together with each other (postflop first-in level), never mixed
+  // with fold/call/raise/allin within the same freq entry, so sharing one order array is safe.
+  var FREQ_ACTION_ORDER = ['raise', 'bet', 'allin', 'call', 'check', 'fold'];
+  var FREQ_ACTION_COLOR = {
+    raise: '#c0442f', bet: '#c0442f', allin: '#9b2fd6', call: '#2f6f8f',
+    check: 'rgba(255,255,255,0.14)', fold: 'rgba(255,255,255,0.14)',
+  };
+  var FREQ_MUTED_ACTIONS = { fold: true, check: true }; // these get muted (non-white) cell text
   // Builds a proportional left-to-right split background for a hand's action-frequency entry,
   // e.g. {raise:70, allin:30} becomes a bar that's red for the first 70% and purple for the rest
   // - this is what actually shows the "not every hand is 100% one action" mixed strategy, instead
@@ -3379,29 +3706,31 @@
   }
 
   function renderPostflopGrid(buckets, facingBet, labelPrefix) {
-    var raiseSet = new Set();
-    buckets.raise.forEach(function (c) { raiseSet.add(c); });
-    buckets.bet.forEach(function (c) { raiseSet.add(c); });
-    var foldSet = new Set();
-    buckets.fold.forEach(function (c) { foldSet.add(c); });
-    buckets.check.forEach(function (c) { foldSet.add(c); });
-    var callSet = buckets.call;
+    var freq = buckets.freq || {};
+    var mode = buckets.mode || (facingBet ? 'facing-bet' : 'first-in');
 
     var html = '';
     for (var r = 0; r < 13; r++) {
       for (var c = 0; c < 13; c++) {
         var canon = chartCanonAt(r, c);
-        var cls = raiseSet.has(canon) ? 'action-raise' : callSet.has(canon) ? 'action-call' : 'action-fold';
-        html += '<div class="range-cell ' + cls + '" title="' + canon + '">' + canon + '</div>';
+        var entry = freq[canon] || { fold: 100 };
+        var dominant = freqDominantAction(entry);
+        var cls = 'action-' + dominant;
+        var muted = FREQ_MUTED_ACTIONS[dominant];
+        html += '<div class="range-cell ' + cls + '" style="' + freqCellStyle(entry) + (muted ? '' : ' color:#fff;') + '" title="' + freqCellTitle(canon, entry) + '">' + canon + '</div>';
       }
     }
     document.getElementById('range-grid').innerHTML = html;
     function pct(n) { return Math.round((n / 169) * 1000) / 10; }
-    var info = (labelPrefix ? labelPrefix + ' — ' : '') + (facingBet ? '레이즈 ' : '벳 ') + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
-    if (callSet.size) info += ' · 콜 ' + callSet.size + '핸드 (' + pct(callSet.size) + '%)';
-    info += ' · ' + (facingBet ? '폴드 ' : '체크 ') + foldSet.size + '핸드 (' + pct(foldSet.size) + '%)';
+    var aggrSet = mode === 'first-in' ? buckets.bet : mode === 'facing-bet' ? buckets.raise : buckets.allin;
+    var aggrLabel = mode === 'first-in' ? '벳' : mode === 'facing-bet' ? '레이즈' : '올인';
+    var passiveSet = mode === 'first-in' ? buckets.check : buckets.fold;
+    var passiveLabel = mode === 'first-in' ? '체크' : '폴드';
+    var info = (labelPrefix ? labelPrefix + ' — ' : '') + aggrLabel + ' ' + aggrSet.size + '핸드 (' + pct(aggrSet.size) + '%)';
+    if (mode !== 'first-in' && buckets.call.size) info += ' · 콜 ' + buckets.call.size + '핸드 (' + pct(buckets.call.size) + '%)';
+    info += ' · ' + passiveLabel + ' ' + passiveSet.size + '핸드 (' + pct(passiveSet.size) + '%)';
     document.getElementById('chart-info').textContent = info;
-    updateChartLegend(facingBet ? 'postflop-facingbet' : 'postflop-checked');
+    updateChartLegend(mode === 'first-in' ? 'postflop-checked' : mode === 'facing-bet' ? 'postflop-facingbet' : 'postflop-facingraise');
   }
 
   // Sizes #range-grid (in px, both dimensions) to exactly fill whichever is tighter - the
@@ -3454,6 +3783,15 @@
       raiseLabel.textContent = '레이즈';
       callLabel.textContent = '콜';
       foldLabel.textContent = '폴드';
+      return;
+    }
+    if (mode === 'postflop-facingraise') {
+      // facing a raise: only fold/call/allin are real options (no further raise tier) - see
+      // poker-postflop-cfr.js's PH3 node - so hide the raise swatch and show allin instead.
+      raiseItem.style.display = 'none';
+      callLabel.textContent = '콜';
+      foldLabel.textContent = '폴드';
+      allinItem.style.display = 'inline-flex';
       return;
     }
     raiseLabel.textContent = '레이즈';
