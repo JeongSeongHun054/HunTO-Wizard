@@ -420,10 +420,8 @@
     min-height: 1.1em;
   }
   .chart-grid-wrap {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
     margin-bottom: 6px;
+    max-width: 760px;
   }
   .range-grid {
     display: grid;
@@ -431,7 +429,7 @@
     grid-template-rows: repeat(13, 1fr);
     gap: 1px;
     width: 100%;
-    height: 100%;
+    aspect-ratio: 1;
     min-width: 0;
   }
   .range-cell {
@@ -573,57 +571,120 @@
   .chart-postflop-grid .form-row { margin-bottom: 0; }
   .chart-postflop-grid .form-row.span2 { grid-column: 1 / -1; }
 
-  /* ---- chart-mode: the range chart tab must fit one screen, no scrolling ---- */
-  body.chart-mode { overflow: hidden; height: 100vh; }
-  /* chart-mode uses the full browser width instead of the base 880px reading-width cap - the
-     range chart is a dense grid that benefits from all the horizontal space it can get. */
-  body.chart-mode .app { max-width: none; width: 100%; padding-left: 24px; padding-right: 24px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; }
-  body.chart-mode header { flex: 0 0 auto; margin-bottom: 12px; }
-  body.chart-mode .mode-tabs { flex: 0 0 auto; margin-bottom: 10px; }
-  body.chart-mode .stats-bar,
-  body.chart-mode #street-stats,
-  body.chart-mode footer,
-  body.chart-mode #chart-desc,
-  body.chart-mode #chart-footnote {
-    display: none !important;
+  /* ---- single-view app shell: the range-chart engine is the whole app now ---- */
+  .app { max-width: 1100px; width: 100%; padding-left: 24px; padding-right: 24px; box-sizing: border-box; margin: 0 auto; }
+
+  .hand-toprow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
   }
-  body.chart-mode #chart-panel {
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-  body.chart-mode #chart-preflop-section,
-  body.chart-mode #chart-postflop-section {
-    flex: 0 0 auto;
-  }
-  body.chart-mode .form-row {
-    margin-bottom: 5px;
-    font-size: 0.8rem;
-  }
-  body.chart-mode .form-row select,
-  body.chart-mode .form-row input[type="number"] {
+  .hand-setting { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text-muted); }
+  .hand-setting select, .hand-setting input[type="number"] {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
     padding: 5px 7px;
-    font-size: 0.8rem;
-    min-width: 0;
+    font-size: 0.82rem;
+  }
+  .hand-setting input[type="number"] { width: 64px; }
+  .hand-status {
+    margin-left: auto;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(212,164,55,0.12);
+    border: 1px solid rgba(212,164,55,0.3);
+    border-radius: 8px;
+    padding: 6px 12px;
+  }
+
+  .hand-board-display { display: flex; gap: 6px; margin-bottom: 10px; }
+  .hand-board-display .card { width: 44px; height: 62px; }
+
+  .hand-history-strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    flex-wrap: nowrap;
+  }
+  .hand-turn-chip {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    font-size: 0.72rem;
+    cursor: pointer;
+    min-width: 54px;
+  }
+  .hand-turn-chip:hover { border-color: rgba(212,164,55,0.5); }
+  .hand-turn-chip .chip-pos { font-weight: 700; font-size: 0.78rem; }
+  .hand-turn-chip .chip-street { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .hand-turn-chip .chip-action { font-weight: 700; }
+  .hand-turn-chip.action-fold .chip-action { color: var(--text-muted); }
+  .hand-turn-chip.action-raise .chip-action,
+  .hand-turn-chip.action-bet .chip-action { color: #ff8a75; }
+  .hand-turn-chip.action-call .chip-action,
+  .hand-turn-chip.action-check .chip-action { color: #7ec3f2; }
+  .hand-turn-chip.action-allin .chip-action { color: #ff7fc4; }
+  .hand-turn-chip.pending { border-color: var(--accent); background: rgba(212,164,55,0.14); }
+  .hand-turn-chip.pending .chip-action { color: var(--accent); }
+
+  .hand-action-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+  }
+  .hand-action-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px 10px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .hand-action-btn:hover { filter: brightness(1.15); }
+  .hand-action-btn.action-fold { color: var(--text-muted); }
+  .hand-action-btn.action-raise, .hand-action-btn.action-bet { background: #c0442f; color: #fff; border-color: transparent; }
+  .hand-action-btn.action-call, .hand-action-btn.action-check { background: #2f6f8f; color: #fff; border-color: transparent; }
+  .hand-action-btn.action-allin { background: linear-gradient(135deg, #ff512f, #b3006b); color: #fff; border-color: transparent; }
+
+  .hand-done-banner {
+    background: var(--panel-2);
+    border: 1.5px solid rgba(212,164,55,0.3);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 12px 0;
   }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>Claude<span>Poker</span> Trainer</h1>
-    <button class="icon-btn" id="settings-toggle">⚙ 설정</button>
+    <h1>Claude<span>Poker</span> Range Chart</h1>
+    <button class="icon-btn" id="reset-hand-btn">↺ 새 핸드</button>
   </header>
 
-  <div class="mode-tabs">
-    <button class="mode-tab active" id="tab-random">🎲 랜덤 트레이닝</button>
-    <button class="mode-tab" id="tab-custom">✍️ 내 상황 입력</button>
-    <button class="mode-tab" id="tab-chart">📊 레인지 차트</button>
-  </div>
-
-  <div id="settings-panel">
-    <h3>학습 설정</h3>
-    <div class="settings-row">
-      <label>테이블 사이즈</label>
+  <div class="hand-toprow">
+    <div class="hand-setting"><label>테이블</label>
       <select id="table-size-select">
         <option value="5">5-max</option>
         <option value="6">6-max</option>
@@ -632,247 +693,25 @@
         <option value="9">9-max (풀링)</option>
       </select>
     </div>
-    <div class="settings-row">
-      <label>게임 타입</label>
+    <div class="hand-setting"><label>게임</label>
       <select id="game-type-select">
-        <option value="cash">캐시 게임</option>
+        <option value="cash">캐시</option>
         <option value="tournament">토너먼트</option>
       </select>
     </div>
-    <div class="settings-row">
-      <label>스트리트 포커스</label>
-      <select id="street-focus-select">
-        <option value="all">전체</option>
-        <option value="preflop">프리플랍만</option>
-        <option value="flop">플랍만</option>
-        <option value="turn">턴만</option>
-        <option value="river">리버만</option>
-      </select>
+    <div class="hand-setting"><label>스택(bb)</label>
+      <input type="number" id="stack-bb-input" value="100" min="4" max="300" step="1" />
     </div>
-    <div class="settings-row">
-      <label>최소 스택 (bb)</label>
-      <input type="number" id="min-stack-input" min="10" max="300" step="5" />
-    </div>
-    <div class="settings-row">
-      <label>최대 스택 (bb)</label>
-      <input type="number" id="max-stack-input" min="10" max="300" step="5" />
-    </div>
-    <p class="muted" style="font-size:0.78rem;margin-bottom:0;">테이블 사이즈와 게임 타입은 모든 탭(랜덤/내 상황 입력/레인지 차트)에 즉시 적용됩니다. 그 외 설정은 다음 핸드부터 적용됩니다.</p>
+    <button type="button" class="icon-btn tiny" id="reset-hand-btn" title="새 핸드로 처음부터 다시 시작">↺ 새 핸드</button>
+    <div class="hand-status" id="hand-status-badge">UTG 차례</div>
   </div>
 
-  <div class="stats-bar">
-    <div class="stats-card"><div class="val" id="stat-total">0</div><div class="lbl">총 시도</div></div>
-    <div class="stats-card"><div class="val" id="stat-correct">0</div><div class="lbl">정답</div></div>
-    <div class="stats-card"><div class="val" id="stat-pct">0%</div><div class="lbl">정답률</div></div>
-  </div>
-  <div id="street-stats"></div>
+  <div id="hand-history-strip" class="hand-history-strip"></div>
 
-  <div id="scenario-panel" style="display:none;">
-    <div id="scenario-body">
-      <span class="custom-tag" id="custom-tag" style="display:none;">✍️ 내가 입력한 상황</span>
-      <div class="badge-row">
-        <div class="badge">스트리트: <b id="street-badge">-</b></div>
-        <div class="badge">내 포지션: <b id="pos-badge">-</b></div>
-        <div class="badge">내 스택: <b id="stack-badge">-</b></div>
-        <div class="badge">팟: <b id="pot-badge">-</b></div>
-      </div>
+  <div id="hand-turn-panel">
+    <p class="hint" id="chart-desc"></p>
 
-      <div class="section-label">내 핸드</div>
-      <div id="hero-cards"></div>
-
-      <div class="section-label">보드</div>
-      <div id="board-cards"></div>
-
-      <div id="facing-box"><span id="facing-text"></span></div>
-
-      <div id="action-buttons"></div>
-      <div id="feedback-panel" class="feedback-panel" style="display:none;"></div>
-    </div>
-    <div id="loading-indicator">핸드 생성 중...</div>
-  </div>
-
-  <div id="custom-panel" style="display:none;">
-    <h3>내가 겪은 상황 입력하기</h3>
-    <p class="hint">칩을 많이 잃었던 스팟이나 헷갈렸던 상황을 그대로 입력해보세요. 입력한 상황에서 어떤 액션을 할지 먼저 골라본 뒤, 엔진 추천과 비교할 수 있습니다.</p>
-
-    <div class="form-section-label">기본 정보</div>
-    <div class="form-row"><label>테이블 사이즈</label>
-      <span><b id="c-tablesize-badge">6-max</b> <button type="button" class="icon-btn" id="c-tablesize-edit-btn" style="margin-left:8px;padding:4px 8px;font-size:0.75rem;">변경</button></span>
-    </div>
-    <div class="form-row"><label>스트리트</label>
-      <select id="c-street">
-        <option value="preflop">프리플랍</option>
-        <option value="flop">플랍</option>
-        <option value="turn">턴</option>
-        <option value="river">리버</option>
-      </select>
-    </div>
-    <div class="form-row"><label>내 포지션</label>
-      <select id="c-pos"></select>
-    </div>
-    <div class="form-row"><label>내 스택 (bb)</label>
-      <input type="number" id="c-stack" value="100" min="5" max="500" step="1" />
-    </div>
-    <div class="form-row"><label>내 핸드</label>
-      <div class="card-picker-pair" id="c-hero-pickers"></div>
-    </div>
-
-    <div id="c-preflop-fields">
-      <div class="form-section-label">프리플랍 상황</div>
-      <div class="form-row"><label>상황</label>
-        <select id="c-facing-type">
-          <option value="unopened">아무도 안 들어옴 (첫 액션)</option>
-          <option value="open">상대 오픈에 대응</option>
-          <option value="threebet">상대 3벳에 대응</option>
-          <option value="fourbet">상대 4벳에 대응</option>
-        </select>
-      </div>
-      <div class="form-row" id="c-villain-pos-row"><label>상대 포지션</label>
-        <select id="c-villain-pos"></select>
-      </div>
-      <div class="form-row" id="c-villain-raise-row"><label>상대 레이즈 총 사이즈 (bb)</label>
-        <input type="number" id="c-villain-raise" value="2.3" min="1" step="0.1" />
-      </div>
-      <div class="form-row" id="c-pf-pot-row"><label>현재 팟 크기 (bb)</label>
-        <input type="number" id="c-pf-pot" value="3.8" min="1" step="0.1" />
-      </div>
-      <div class="form-row" id="c-pf-call-row"><label>콜 필요 금액 (bb)</label>
-        <input type="number" id="c-pf-call" value="2.3" min="0" step="0.1" />
-      </div>
-    </div>
-
-    <div id="c-postflop-fields" style="display:none;">
-      <div class="form-section-label">보드 &amp; 팟</div>
-      <div class="form-row"><label>보드</label>
-        <div class="card-picker-row" id="c-board-pickers"></div>
-      </div>
-      <div class="form-row"><label>팟 크기 (bb)</label>
-        <input type="number" id="c-pot" value="10" min="1" step="0.5" />
-      </div>
-      <div class="form-row"><label>상대 액션</label>
-        <select id="c-villain-action">
-          <option value="0">체크함 / 내가 먼저 액션</option>
-          <option value="bet">벳/레이즈함</option>
-        </select>
-      </div>
-      <div class="form-row" id="c-villain-bet-row" style="display:none;"><label>상대 사이즈 (bb)</label>
-        <input type="number" id="c-villain-bet" value="6" min="0.5" step="0.5" />
-      </div>
-
-      <div class="form-section-label">맥락 (레인지 추정용)</div>
-      <div class="form-row"><label>내가 마지막 어그레서였나요?</label>
-        <select id="c-hero-aggressor"><option value="yes">예</option><option value="no">아니오</option></select>
-      </div>
-      <div class="form-row"><label>내가 인포지션인가요?</label>
-        <select id="c-hero-ip"><option value="yes">예</option><option value="no">아니오</option></select>
-      </div>
-      <div class="form-row"><label>상대가 어디서 들어왔나요?</label>
-        <select id="c-range-pos">
-          <option value="unknown">잘 모름 (넓게 추정)</option>
-        </select>
-      </div>
-      <div class="form-row"><label>상대의 이전 스트리트 플레이</label>
-        <select id="c-range-style">
-          <option value="none">정보 없음 (레인지 유지)</option>
-          <option value="bet_big">크게 베팅해옴 (좁게 추정)</option>
-          <option value="bet_small">작게 베팅해옴 (넓게 유지)</option>
-          <option value="check">체크 위주였음 (약한 레인지)</option>
-        </select>
-      </div>
-    </div>
-
-    <div id="c-icm-section" style="display:none;">
-      <div class="form-section-label">ICM (토너먼트 전용)</div>
-      <div class="form-row"><label>상대 스택 (bb)</label>
-        <input type="number" id="c-icm-villain-stack" value="100" min="1" step="1" />
-      </div>
-      <div class="form-row"><label>남은 인원 수 (나+상대 포함)</label>
-        <input type="number" id="c-icm-remaining" value="9" min="2" max="20" step="1" />
-      </div>
-      <div class="form-row"><label>페이 받는 인원 수</label>
-        <input type="number" id="c-icm-paid" value="8" min="1" max="20" step="1" />
-      </div>
-      <div class="form-row"><label>기타 참가자 스택 (bb, 쉼표구분)</label>
-        <input type="text" id="c-icm-other-stacks" placeholder="예: 50, 80, 120" />
-      </div>
-      <div class="form-row"><label>페이 구조</label>
-        <select id="c-icm-payout-shape">
-          <option value="flat">균등</option>
-          <option value="medium" selected>미디엄</option>
-          <option value="topheavy">탑헤비</option>
-        </select>
-      </div>
-      <div class="form-row" style="gap:8px;">
-        <button type="button" class="icon-btn" id="c-icm-preset-bubble" style="flex:1;">🫧 머니인 직전(버블) 세팅</button>
-        <button type="button" class="icon-btn" id="c-icm-preset-payjump" style="flex:1;">📈 머니점프 직전 세팅</button>
-      </div>
-      <p class="hint" style="margin-top:6px;">버블: 페이 받는 인원 = 남은 인원 − 1로 자동 설정합니다. 머니점프: 페이 받는 인원 = 남은 인원으로 자동 설정합니다 (한 명만 나가도 다음 페이 구간으로 올라갑니다).</p>
-    </div>
-
-    <div id="c-error" style="display:none;"></div>
-    <button class="primary-btn" id="c-submit-btn">이 상황으로 분석하기 ▶</button>
-  </div>
-
-  <div id="chart-panel" style="display:none;">
-    <h3 id="chart-title">프리플랍 레인지 차트</h3>
-    <p class="hint" id="chart-desc">포지션 칸을 순서대로 눌러 폴드/콜/레이즈/올인 중 액션을 골라보세요 — 앞 포지션에서 고른 액션에 따라 다음 포지션이 마주하는 상황(오픈/3벳/4벳)이 자동으로 이어집니다.</p>
-
-    <div id="chart-preflop-section">
-      <div class="chart-toprow">
-        <div class="chart-tablesize-inline"><select id="chart-tablesize-select"><option value="5">5-max</option><option value="6">6-max</option><option value="7">7-max</option><option value="8">8-max</option><option value="9">9-max (풀링)</option></select></div>
-        <button type="button" class="icon-btn tiny" id="chart-reset-seq-btn" title="모든 포지션의 선택을 지우고 처음부터 다시 시작">↺ 초기화</button>
-        <button type="button" class="to-flop-inline" id="chart-to-flop-btn" style="margin-left:auto;" title="현재까지 고른 액션(포지션·팟·어그레서)을 그대로 이어받아 플랍으로 - 보드만 채워가며 턴/리버까지 볼 수 있어요">▶ 플랍</button>
-      </div>
-      <div id="chart-pos-strip" class="pos-strip"></div>
-      <!-- kept for backward-compatible JS wiring/tests; visually replaced by the interactive strip above -->
-      <select id="chart-pos" style="display:none;"></select>
-      <select id="chart-situation" style="display:none;">
-        <option value="rfi">오픈 레인지 (RFI)</option>
-        <option value="vsopen">상대 오픈에 대응</option>
-        <option value="vs3bet">상대 3벳에 대응</option>
-        <option value="vs4bet">상대 4벳에 대응</option>
-      </select>
-      <select id="chart-opp-pos" style="display:none;"></select>
-    </div>
-
-    <div id="chart-postflop-section" style="display:none;">
-      <div class="postflop-nav-row">
-        <button type="button" class="icon-btn tiny" id="chart-back-to-preflop-btn">◀ 프리플랍으로</button>
-        <span id="chart-context-summary" class="badge"></span>
-        <button type="button" class="icon-btn tiny" id="chart-random-board-btn">🎲 보드 다시</button>
-        <button type="button" class="to-flop-inline" id="chart-next-street-btn" style="margin-left:auto;">▶ 턴 카드 추가</button>
-      </div>
-
-      <div class="form-row"><label>보드</label>
-        <div class="card-picker-row" id="chart-board-pickers"></div>
-      </div>
-
-      <div class="chart-postflop-grid">
-        <div class="form-row"><label>팟 크기 (bb)</label>
-          <input type="number" id="chart-pot" value="10" min="1" step="0.5" />
-        </div>
-        <div class="form-row"><label>상대 액션</label>
-          <select id="chart-villain-action">
-            <option value="0">체크함 / 내가 먼저</option>
-            <option value="bet">벳/레이즈함</option>
-          </select>
-        </div>
-        <div class="form-row" id="chart-villain-bet-row" style="display:none;"><label>상대 사이즈 (bb)</label>
-          <input type="number" id="chart-villain-bet" value="6" min="0.5" step="0.5" />
-        </div>
-        <div class="form-row"><label>마지막 어그레서?</label>
-          <select id="chart-hero-aggressor"><option value="yes">예</option><option value="no">아니오</option></select>
-        </div>
-        <div class="form-row"><label>인포지션?</label>
-          <select id="chart-hero-ip"><option value="yes">예</option><option value="no">아니오</option></select>
-        </div>
-        <div class="form-row span2"><label>상대 레인지 기준</label>
-          <select id="chart-villain-range-pos">
-            <option value="unknown">잘 모름 (넓게 추정)</option>
-          </select>
-        </div>
-      </div>
-    </div>
+    <div id="hand-board-display" class="hand-board-display" style="display:none;"></div>
 
     <div class="chart-legend">
       <span class="legend-item" id="chart-legend-raise-item"><span class="legend-swatch action-raise"></span><span id="chart-legend-raise-label">레이즈</span></span>
@@ -883,16 +722,16 @@
     <div id="chart-info"></div>
 
     <div class="chart-grid-wrap"><div class="range-grid" id="range-grid"></div></div>
-    <p class="hint" style="margin-bottom:0;" id="chart-footnote">169칸 그리드는 참고용 차트이며 눌러도 반응하지 않아요. 실전 판단은 '내 상황 입력' 탭에서 직접 시뮬레이션해보세요.<br/>4벳에 대응하는 상황에서는 콜 레인지 중 최상위 핸드를 '올인'으로 따로 표시합니다 (실제 5벳/올인 사이징을 모델링한 것은 아니며, 4벳급 프리미엄 핸드를 기준으로 나눈 근사치입니다).</p>
+
+    <div id="hand-action-row" class="hand-action-row"></div>
   </div>
 
-  <div id="bottom-actions" style="display:none;">
-    <button id="next-hand-btn">다음 핸드 ▶</button>
-    <button class="icon-btn" id="reset-stats-btn" style="margin-top:10px;width:100%;">학습 기록 초기화</button>
-  </div>
+  <div id="hand-done-panel" class="hand-done-banner" style="display:none;"></div>
+
+  <p class="hint" style="margin-bottom:0;" id="chart-footnote">169칸 그리드는 참고용 차트이며, 실전 판단은 각 스트리트 액션 버튼을 눌러 직접 이어가 보세요.<br/>4벳/숏스택 올인 상황에서는 콜 레인지 중 최상위 핸드를 '올인'으로 따로 표시합니다 (실제 솔버 산출이 아닌 근사치입니다).</p>
 
   <footer>
-    이 추천은 GTO 솔버가 아닌 휴리스틱(포트오즈 + 에퀴티 시뮬레이션 + 보드 텍스처 규칙) 기반 근사치입니다.<br/>
+    이 추천은 GTO 솔버가 아닌 휴리스틱(포트오즈 + 에퀴티 시뮬레이션 + 보드 텍스처 규칙 + 스택 깊이 근사) 기반 근사치입니다.<br/>
     학습/연습용 오프라인 도구이며, 실시간 온라인 게임 어시스턴트로 사용하기 위한 것이 아닙니다.
   </footer>
 </div>
@@ -1584,6 +1423,53 @@
     return range;
   }
 
+  // ---- Stack-depth (effective stack in bb) tiers ----
+  // The ranges above are all calibrated to a ~100bb baseline. As effective stack gets shorter,
+  // real preflop strategy shifts toward push/fold: raising ranges widen (fold equity from
+  // shoving matters more than raw hand strength) and standard-sized raises stop existing at all
+  // - opens, 3-bets, and 4-bets are ALL effectively shoves once stacks are short enough. This is
+  // a calibrated heuristic approximation layered on the baseline ranges above, NOT a real
+  // push/fold Nash-equilibrium solver (which would need its own ICM/fold-equity model per stack
+  // depth and player count) - consistent with the rest of this engine's "approximation for study
+  // purposes" framing.
+  function stackTier(stackBB) {
+    if (stackBB <= 12) return 'micro'; // essentially push/fold only
+    if (stackBB <= 20) return 'short'; // shove-heavy, standard-sized raising mostly gone
+    if (stackBB <= 40) return 'mid';   // some standard raising left, but 3bet+ is often a shove
+    return 'deep'; // 40bb+ - baseline 100bb-calibrated numbers apply essentially as-is
+  }
+  const STACK_TIER_ADJUST = {
+    deep:  { openMult: 1.00, allRaisesAreAllin: false },
+    mid:   { openMult: 1.12, allRaisesAreAllin: false },
+    short: { openMult: 1.28, allRaisesAreAllin: true },
+    micro: { openMult: 1.45, allRaisesAreAllin: true },
+  };
+  function stackTierAdjust(stackBB) {
+    return STACK_TIER_ADJUST[stackTier(stackBB)];
+  }
+
+  function openingRangeAtStack(pos, tableSize, stackBB) {
+    const adj = stackTierAdjust(stackBB);
+    const pct = Math.min(100, openThreshold(pos, tableSize) * adj.openMult);
+    return buildRangeSet(pct);
+  }
+  function threeBetRangeAtStack(heroPos, openerPos, tableSize, stackBB) {
+    const adj = stackTierAdjust(stackBB);
+    const pct = Math.min(100, threeBetThreshold(heroPos, openerPos, tableSize) * adj.openMult);
+    let range = buildRangeSet(pct);
+    if (inPosition(heroPos, openerPos, tableSize) || heroPos === 'BB' || heroPos === 'SB') {
+      range = addBluffs(range, THREEBET_BLUFF_CANDIDATES);
+    }
+    return range;
+  }
+  function fourBetRangeAtStack(heroPos, stackBB) {
+    const adj = stackTierAdjust(stackBB);
+    const pct = Math.min(100, FOURBET_PCT * adj.openMult);
+    let range = buildRangeSet(pct);
+    range = addBluffs(range, FOURBET_BLUFF_CANDIDATES);
+    return range;
+  }
+
   // Standard-ish preflop bet sizing in BB
   function sizing() {
     return {
@@ -1824,10 +1710,11 @@
   }
 
   return {
-    POSITIONS_BY_SIZE, positionsFor,
+    POSITIONS_BY_SIZE, positionsFor, postflopOrderFor,
     OPEN_PCT_BY_SIZE,
     openThreshold, threeBetThreshold, inPosition,
     openingRange, threeBetRange, fourBetRange,
+    stackTier, stackTierAdjust, openingRangeAtStack, threeBetRangeAtStack, fourBetRangeAtStack,
     sizing, playabilityAdjustment, decidePreflop,
     representativeCards, rangeBucketsForFacing,
   };
@@ -2550,78 +2437,51 @@
   var Core = window.PokerCore;
   var Preflop = window.PokerPreflop;
   var Postflop = window.PokerPostflop;
-  var Scenario = window.PokerScenario;
-  var ICM = window.PokerICM;
 
-  var STORAGE_KEY = 'claudepoker_stats_v1';
   var SUIT_SYMBOL = { s: '♠', h: '♥', d: '♦', c: '♣' };
   var SUIT_RED = { h: true, d: true, s: false, c: false };
   var STREET_LABEL = { preflop: '프리플랍', flop: '플랍', turn: '턴', river: '리버' };
   var ACTION_LABEL = { fold: '폴드', check: '체크', call: '콜', bet: '벳', raise: '레이즈', allin: '올인' };
+  var CHART_RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+  var PREFLOP_LEVEL_LABEL = { 0: '오픈', 1: '오픈', 2: '3벳', 3: '4벳' };
 
-  var CARD_RANKS = '23456789TJQKA'.split('');
-  var CARD_SUITS = ['s', 'h', 'd', 'c'];
+  var SETTINGS_KEY = 'claudepoker_settings_v2';
 
   var state = {
-    settings: loadSettings(),
-    stats: loadStats(),
-    currentHand: null,
-    currentDP: null,
-    answered: false,
-    mode: 'random',
-    // range-chart tab: tracks the connected preflop->flop->turn->river flow
-    chartStreet: 'preflop',
-    chartDerivedVillainRange: null, // Set<canon>, derived exactly from the preflop situation just viewed
-    chartDerivedLabel: '',
-    // range-chart tab: sequential action-builder state. chartActions maps position -> chosen
-    // action ('fold'/'call'/'raise'/'allin'), built up one position at a time in table order -
-    // e.g. {UTG:'raise', UTG1:'raise'} means UTG opened and UTG1 3-bet over it. Positions with
-    // no entry are undecided, which (for cascading purposes) behaves like a fold: it doesn't
-    // change what later positions face. chartFocusPos is whichever position's chart is currently
-    // shown in the big 169-cell grid.
-    chartActions: {},
-    chartFocusPos: null,
+    tableSize: 6,
+    gameType: 'cash',
+    stackBB: 100,
+    // hand.actions: flat chronological list of action strings ('fold'/'check'/'call'/'raise'/'bet'/'allin').
+    // hand.board: 5 cards dealt up front (revealed progressively as streets advance). Replaying
+    // this actions list from scratch (see replayHand) deterministically reconstructs the entire
+    // hand state - this is what makes editing an earlier decision (rewinding via the history
+    // strip) trivial: truncate the array and re-render, no separate invalidation logic needed.
+    hand: { actions: [], board: [] },
   };
 
-  // ---------- persistence ----------
-  function loadStats() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-    return emptyStats();
-  }
-  function emptyStats() {
-    return {
-      total: 0, correct: 0,
-      byStreet: {
-        preflop: { total: 0, correct: 0 },
-        flop: { total: 0, correct: 0 },
-        turn: { total: 0, correct: 0 },
-        river: { total: 0, correct: 0 },
-      },
-    };
-  }
-  function saveStats() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.stats)); } catch (e) {}
-  }
+  // ---------- persistence (table size / game type / stack only - no stats, no scenario state) ----------
   function loadSettings() {
     try {
-      var raw = localStorage.getItem('claudepoker_settings_v1');
+      var raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) {
         var parsed = JSON.parse(raw);
-        if (!parsed.tableSize) parsed.tableSize = 6; // backward-compat for saves before table-size support
-        if (!parsed.gameType) parsed.gameType = 'cash'; // backward-compat for saves before cash/tournament support
-        return parsed;
+        if (parsed.tableSize) state.tableSize = parsed.tableSize;
+        if (parsed.gameType) state.gameType = parsed.gameType;
+        if (parsed.stackBB) state.stackBB = parsed.stackBB;
       }
     } catch (e) {}
-    return { streetFocus: 'all', minStack: 25, maxStack: 150, tableSize: 6, gameType: 'cash' };
   }
   function saveSettings() {
-    try { localStorage.setItem('claudepoker_settings_v1', JSON.stringify(state.settings)); } catch (e) {}
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        tableSize: state.tableSize, gameType: state.gameType, stackBB: state.stackBB,
+      }));
+    } catch (e) {}
   }
 
-  // ---------- rendering helpers ----------
+  function round1(n) { return Math.round(n * 10) / 10; }
+
+  // ---------- card rendering ----------
   function cardHtml(card) {
     var rank = card[0] === 'T' ? '10' : card[0];
     var suit = card[1];
@@ -2630,678 +2490,319 @@
       '<span class="rank">' + rank + '</span><span class="suit">' + SUIT_SYMBOL[suit] + '</span>' +
       '</div>';
   }
-  function cardsHtml(cards) {
-    return cards.map(cardHtml).join('');
-  }
-  function emptyCardSlotHtml() {
-    return '<div class="card empty"></div>';
+
+  function chartCanonAt(row, col) {
+    if (row === col) return CHART_RANKS[row] + CHART_RANKS[row];
+    if (row < col) return CHART_RANKS[row] + CHART_RANKS[col] + 's';
+    return CHART_RANKS[col] + CHART_RANKS[row] + 'o';
   }
 
-  // ---------- card picker (custom mode) ----------
-  function cardPickerHtml(idPrefix) {
-    var rankOpts = '<option value="">-</option>' + CARD_RANKS.map(function (r) {
-      return '<option value="' + r + '">' + (r === 'T' ? '10' : r) + '</option>';
-    }).join('');
-    var suitOpts = '<option value="">-</option>' + CARD_SUITS.map(function (s) {
-      return '<option value="' + s + '">' + SUIT_SYMBOL[s] + '</option>';
-    }).join('');
-    return '<div class="card-picker">' +
-      '<select id="' + idPrefix + '-rank">' + rankOpts + '</select>' +
-      '<select id="' + idPrefix + '-suit">' + suitOpts + '</select>' +
-      '</div>';
-  }
-  function readCardPicker(idPrefix) {
-    var rankEl = document.getElementById(idPrefix + '-rank');
-    var suitEl = document.getElementById(idPrefix + '-suit');
-    if (!rankEl || !suitEl) return null;
-    var rank = rankEl.value, suit = suitEl.value;
-    if (!rank || !suit) return null;
-    return rank + suit;
-  }
-  function renderBoardPickers(count, idPrefix, containerId) {
-    idPrefix = idPrefix || 'c-board-';
-    containerId = containerId || 'c-board-pickers';
-    var html = '';
-    for (var i = 0; i < count; i++) html += cardPickerHtml(idPrefix + i);
-    document.getElementById(containerId).innerHTML = html;
-  }
-
-  function describeFacing(dp) {
-    if (dp.street === 'preflop') {
-      var f = dp.facing;
-      if (f.type === 'unopened') return '아직 아무도 레이즈하지 않았습니다. 첫 액션 차례입니다.';
-      if (f.type === 'open') return f.openerPos + '가 ' + f.sizeBB + 'bb로 오픈했습니다. 콜하려면 ' + f.toCallBB + 'bb가 필요합니다.';
-      if (f.type === 'threebet') return f.threebettorPos + '가 ' + f.sizeBB + 'bb로 3벳했습니다. 콜하려면 ' + f.toCallBB + 'bb가 필요합니다.';
-      if (f.type === 'fourbet') return f.fourbettorPos + '가 ' + f.sizeBB + 'bb로 4벳했습니다. 콜하려면 ' + f.toCallBB + 'bb가 필요합니다.';
-      return '';
-    }
-    if (dp.facing.toCallBB > 0) {
-      return '상대가 ' + round1(dp.facing.betBB) + 'bb 벳/레이즈했습니다. 콜하려면 ' + round1(dp.facing.toCallBB) + 'bb가 필요합니다. (현재 팟 ' + round1(dp.potBB) + 'bb)';
-    }
-    return '상대가 체크했거나, 당신이 먼저 액션할 차례입니다. 현재 팟은 ' + round1(dp.potBB) + 'bb입니다.';
-  }
-
-  function round1(n) { return Math.round(n * 10) / 10; }
-
-  function legalActions(dp) {
-    if (dp.street === 'preflop') {
-      var f = dp.facing;
-      if (f.type === 'unopened') return ['fold', 'raise', 'allin'];
-      if (f.type === 'fourbet') return ['fold', 'call', 'allin'];
-      return ['fold', 'call', 'raise', 'allin'];
-    }
-    if (dp.facing.toCallBB > 0) return ['fold', 'call', 'raise', 'allin'];
-    return ['check', 'bet', 'allin'];
-  }
-
-  // An all-in is treated as an acceptable (if extreme) version of whatever aggressive action
-  // the engine actually recommended - i.e. if the engine says "raise" or "bet", shoving your
-  // whole stack there also counts as correct, since it's the same directional decision taken
-  // further. It's NOT accepted as a stand-in for call/check/fold, since jamming when you should
-  // just call/check/fold is a genuine (and costly) mistake, not a stylistic variation.
-  function acceptableActions(dp) {
-    var correctAction = dp.decision.action;
-    var accepted = [correctAction];
-    if (correctAction === 'raise' || correctAction === 'bet') accepted.push('allin');
-    return accepted;
-  }
-
-  function actionButtonLabel(action, dp) {
-    if (action === 'allin') return '올인 ALL-IN';
-    if (dp.street === 'preflop') {
-      if (action === 'raise') {
-        if (dp.facing.type === 'unopened') return '레이즈 (오픈)';
-        if (dp.facing.type === 'open') return '레이즈 (3벳)';
-        if (dp.facing.type === 'threebet') return '레이즈 (4벳)';
+  // Moves the top `pct`% of the 169 canonical hands (by hand strength) OUT of `raiseSet` and
+  // INTO `allinSet`, but only for hands that were actually in raiseSet to begin with.
+  function splitTopAsAllin(raiseSet, allinSet, pct) {
+    var elite = Core.topPercent(pct);
+    elite.forEach(function (canon) {
+      if (raiseSet.has(canon)) {
+        raiseSet.delete(canon);
+        allinSet.add(canon);
       }
-    } else if (action === 'bet') {
-      return '벳';
-    } else if (action === 'raise') {
-      return '레이즈';
-    }
-    return ACTION_LABEL[action];
+    });
   }
 
-  // ---------- scenario generation ----------
-  function generateScenario() {
-    setLoading(true);
-    setTimeout(function () {
-      var dp = null;
-      var handAttempts = 0;
-      while (!dp && handAttempts < 25) {
-        handAttempts++;
-        var hand = Scenario.generateHand({
-          iterations: 250,
-          minStackBB: state.settings.minStack,
-          maxStackBB: state.settings.maxStack,
-          tableSize: state.settings.tableSize,
-          maxAttempts: 40,
+  // ---------- effective stack for range-tier lookups ----------
+  // Tournament play carries more fold-equity/ICM pressure than a cash game at the same bb-stack,
+  // so ranges get modeled slightly wider at a given nominal stack - a modest, explicitly
+  // approximate adjustment (see poker-preflop.js's stack-tier comments for the same framing).
+  function effectiveStackForRanges() {
+    return state.gameType === 'tournament' ? round1(state.stackBB * 0.85) : state.stackBB;
+  }
+
+  // ---------- turn-order engine ----------
+  // Replays a flat list of actions from scratch against real poker turn-order rules: a raise
+  // reopens the betting round for every other live player (including anyone who already acted
+  // this round), a round closes when the field runs out of players who still need to respond to
+  // the last raise (or nobody has raised and everyone has acted once), and streets advance
+  // automatically once a round closes - all the way to the river if nobody wins the pot
+  // uncontested first. This is what fixes the "UTG opens, UTG1 3-bets, everyone else folds -
+  // action should return to UTG" case: UTG is never removed from stillNeedToAct once UTG1's
+  // 3-bet reopens the round for every live player except UTG1 itself.
+  function nextStreetName(street) {
+    return { preflop: 'flop', flop: 'turn', turn: 'river', river: 'done' }[street];
+  }
+  function boardCountFor(street) {
+    return { preflop: 0, flop: 3, turn: 4, river: 5, done: 5 }[street];
+  }
+
+  // Total bb a position will have put in THIS STREET after taking a raise/bet/allin action.
+  // Preflop uses the same flat, non-chip-perfect sizing constants the earlier situation-based
+  // chart used (2.3bb open / 6.9bb 3bet / 16bb 4bet) - a deliberate simplification consistent
+  // with this being a heuristic study tool rather than an exact-chip poker engine. Postflop bets
+  // are ~65% pot, postflop raises are ~2.5x the bet they're raising over.
+  function sizingForTurn(ctx) {
+    if (ctx.action === 'allin') return { totalBB: ctx.stackBB };
+    if (ctx.street === 'preflop') {
+      if (ctx.level === 0) return { totalBB: 2.3 };
+      if (ctx.level === 1) return { totalBB: 6.9 };
+      return { totalBB: 16 }; // level 2 -> 4bet (level 3 is capped, no raise offered)
+    }
+    if (ctx.level === 0) return { totalBB: round1(ctx.potBB * 0.65) };
+    return { totalBB: round1((ctx.currentBetBB || ctx.potBB * 0.65) * 2.5) };
+  }
+
+  function replayHand(actionsList, tableSize, stackBB, board5) {
+    var preflopOrder = Preflop.positionsFor(tableSize);
+    var postflopOrder = Preflop.postflopOrderFor(tableSize);
+    var folded = {};
+    var street = 'preflop';
+    var level = 0; // 0=unopened/checked, 1=open/bet, 2=3bet/raise, 3=4bet (preflop-only cap)
+    var aggressorPos = null; // current street's last raiser/bettor
+    var handAggressorPos = null; // persists across streets (last preflop raiser, or later overridden postflop)
+    var potBB = 1.5;
+    var currentBetBB = 1.0; // BB's post is the initial preflop "bet" everyone must match
+    var contributed = {};
+
+    var sbPos = null, bbPos = null;
+    preflopOrder.forEach(function (p) { if (p === 'SB') sbPos = p; if (p === 'BB') bbPos = p; });
+    if (sbPos) contributed[sbPos] = 0.5;
+    if (bbPos) contributed[bbPos] = 1.0;
+
+    function order() { return street === 'preflop' ? preflopOrder : postflopOrder; }
+    function liveOrder() { return order().filter(function (p) { return !folded[p]; }); }
+
+    var stillNeedToAct = liveOrder().slice();
+    var turns = [];
+    var actionIdx = 0;
+    var boardRevealed = [];
+    // cursorIdx tracks the LAST actor's index within order() (the fixed table-order array for
+    // the current street), so the search for who's next continues rotating clockwise from there
+    // instead of always restarting at seat 0 - restarting at seat 0 was the original bug: after a
+    // reopening raise from a LATE seat, the naive "first live+needs-to-act seat in table order"
+    // scan would immediately jump back to an EARLY seat that also got reopened (e.g. UTG) instead
+    // of continuing to the seats between the raiser and that early seat first (e.g. BTN/SB/BB),
+    // which is not how real poker turn order works.
+    var cursorIdx = -1;
+
+    while (true) {
+      var live = liveOrder();
+      if (live.length <= 1) { street = 'done'; break; }
+
+      var curOrder = order();
+      var nextPos = null;
+      var nextIdx = -1;
+      for (var k = 1; k <= curOrder.length; k++) {
+        var idx = (cursorIdx + k) % curOrder.length;
+        var p = curOrder[idx];
+        if (!folded[p] && stillNeedToAct.indexOf(p) !== -1) { nextPos = p; nextIdx = idx; break; }
+      }
+
+      if (nextPos === null) {
+        if (street === 'river') { street = 'done'; break; }
+        street = nextStreetName(street);
+        boardRevealed = board5.slice(0, boardCountFor(street));
+        level = 0;
+        aggressorPos = null;
+        currentBetBB = 0;
+        contributed = {};
+        stillNeedToAct = liveOrder();
+        cursorIdx = -1;
+        continue;
+      }
+
+      var toCallBB = round1(currentBetBB - (contributed[nextPos] || 0));
+
+      if (actionIdx >= actionsList.length) {
+        turns.push({
+          pos: nextPos, street: street, level: level, action: null,
+          potBB: potBB, toCallBB: toCallBB, currentBetBB: currentBetBB,
+          aggressorPos: aggressorPos, handAggressorPos: handAggressorPos,
+          liveOpponents: live.filter(function (x) { return x !== nextPos; }),
+          board: boardRevealed.slice(),
         });
-        if (!hand) continue;
-        dp = Scenario.pickDecisionPoint(hand, state.settings.streetFocus, Math.random);
-        if (dp) state.currentHand = hand;
+        break;
       }
-      state.currentDP = dp;
-      state.answered = false;
-      setLoading(false);
-      render();
-    }, 10);
-  }
 
-  function setLoading(isLoading) {
-    var btn = document.getElementById('next-hand-btn');
-    if (btn) btn.disabled = isLoading;
-    var loadingEl = document.getElementById('loading-indicator');
-    if (loadingEl) loadingEl.style.display = isLoading ? 'flex' : 'none';
-    var sceneEl = document.getElementById('scenario-panel');
-    if (sceneEl) sceneEl.style.opacity = isLoading ? '0.4' : '1';
-  }
-
-  // ---------- main render ----------
-  function render() {
-    renderStats();
-    renderSettingsUI();
-    var dp = state.currentDP;
-    if (!dp) {
-      document.getElementById('scenario-body').innerHTML = '<p class="muted">해당 스트리트에 맞는 상황을 찾지 못했습니다. 다시 시도해주세요.</p>';
-      document.getElementById('action-buttons').innerHTML = '';
-      document.getElementById('feedback-panel').style.display = 'none';
-      return;
-    }
-
-    document.getElementById('custom-tag').style.display = dp.custom ? 'inline-block' : 'none';
-    document.getElementById('street-badge').textContent = STREET_LABEL[dp.street];
-    document.getElementById('pos-badge').textContent = dp.pos;
-    document.getElementById('stack-badge').textContent = (dp.effStackBB || state.settings.maxStack) + 'bb';
-    document.getElementById('pot-badge').textContent = round1(dp.potBB) + 'bb';
-
-    document.getElementById('hero-cards').innerHTML = cardsHtml(dp.heroCards);
-
-    var boardSlots = '';
-    for (var i = 0; i < 5; i++) {
-      boardSlots += i < dp.board.length ? cardHtml(dp.board[i]) : emptyCardSlotHtml();
-    }
-    document.getElementById('board-cards').innerHTML = boardSlots;
-
-    document.getElementById('facing-text').textContent = describeFacing(dp);
-
-    renderActionButtons(dp);
-    document.getElementById('feedback-panel').style.display = 'none';
-  }
-
-  function renderActionButtons(dp) {
-    var actions = legalActions(dp);
-    var html = actions.map(function (a) {
-      return '<button class="action-btn action-' + a + '" data-action="' + a + '">' + actionButtonLabel(a, dp) + '</button>';
-    }).join('');
-    var container = document.getElementById('action-buttons');
-    container.innerHTML = html;
-    Array.prototype.forEach.call(container.querySelectorAll('.action-btn'), function (btn) {
-      btn.addEventListener('click', function () {
-        if (state.answered) return;
-        submitAction(btn.getAttribute('data-action'));
-      });
-    });
-  }
-
-  function submitAction(userAction) {
-    var dp = state.currentDP;
-    if (!dp || state.answered) return;
-    state.answered = true;
-
-    var accepted = acceptableActions(dp);
-    var isCorrect = accepted.indexOf(userAction) !== -1;
-
-    state.stats.total++;
-    if (isCorrect) state.stats.correct++;
-    var bucket = state.stats.byStreet[dp.street];
-    bucket.total++;
-    if (isCorrect) bucket.correct++;
-    saveStats();
-
-    renderFeedback(dp, userAction, isCorrect);
-    renderStats();
-
-    Array.prototype.forEach.call(document.querySelectorAll('.action-btn'), function (btn) {
-      btn.classList.add('disabled');
-      if (accepted.indexOf(btn.getAttribute('data-action')) !== -1) btn.classList.add('correct-choice');
-      if (btn.getAttribute('data-action') === userAction && !isCorrect) btn.classList.add('wrong-choice');
-    });
-  }
-
-  function renderFeedback(dp, userAction, isCorrect) {
-    var panel = document.getElementById('feedback-panel');
-    panel.style.display = 'block';
-    panel.className = 'feedback-panel ' + (isCorrect ? 'feedback-correct' : 'feedback-wrong');
-
-    var headline = isCorrect
-      ? '✅ 정답입니다! (' + ACTION_LABEL[userAction] + ')'
-      : '❌ 아쉽습니다. 당신의 선택: ' + ACTION_LABEL[userAction] + ' / 추천: ' + dp.decision.label;
-
-    var eqHtml = '';
-    if (typeof dp.decision.equity === 'number') {
-      var eqPct = Math.round(dp.decision.equity * 1000) / 10;
-      eqHtml += '<div class="eq-row"><span>추정 에퀴티</span><div class="eq-bar"><div class="eq-fill" style="width:' + eqPct + '%"></div></div><span>' + eqPct + '%</span></div>';
-    }
-    if (typeof dp.decision.requiredEquity === 'number') {
-      var reqPct = Math.round(dp.decision.requiredEquity * 1000) / 10;
-      eqHtml += '<div class="eq-row muted-row"><span>필요 에퀴티 (팟오즈)</span><span>' + reqPct + '%</span></div>';
-    }
-
-    var textureHtml = '';
-    if (dp.decision.texture) {
-      textureHtml = '<div class="texture-row muted-row">보드 텍스처: ' + Postflop.textureLabel(dp.decision.texture) + '</div>';
-    }
-
-    var reasonsHtml = (dp.decision.reasons || []).map(function (r) { return '<li>' + r + '</li>'; }).join('');
-
-    var icmHtml = '';
-    if (dp.icm) {
-      var icm = dp.icm;
-      var chipPct = Math.round(icm.chipRequiredEquity * 1000) / 10;
-      var icmPct = Math.round(icm.icmRequiredEquity * 1000) / 10;
-      var premiumPct = Math.round(icm.icmPremium * 1000) / 10;
-      icmHtml = '<div class="icm-box">' +
-        '<div class="icm-title">🏆 ICM 분석 (토너먼트)</div>' +
-        '<div class="eq-row muted-row"><span>칩 기준 필요 에퀴티</span><span>' + chipPct + '%</span></div>' +
-        '<div class="eq-row muted-row"><span>ICM 기준 필요 에퀴티</span><span>' + icmPct + '%</span></div>' +
-        '<div class="eq-row muted-row"><span>ICM 프리미엄</span><span>+' + premiumPct + '%p</span></div>' +
-        '<div class="icm-reco">ICM 관점 권장: <strong>' + (icm.recommendation === 'call' ? '콜' : '폴드') + '</strong></div>' +
-        '<p class="disclaimer-mini">※ ICM 수치 자체는 정확한 계산(Malmuth-Harville 모델)이지만, 상대/기타 참가자 스택과 페이 구조는 입력값 기준 근사치입니다.</p>' +
-        '</div>';
-    }
-
-    var allinNoteHtml = '';
-    if (userAction === 'allin' && (dp.decision.action === 'raise' || dp.decision.action === 'bet')) {
-      allinNoteHtml = '<p class="disclaimer-mini">※ 올인은 레이즈/벳 추천에 대한 허용 가능한 선택으로 처리했습니다. 다만 이 엔진은 숏스택 푸시/폴드처럼 올인 그 자체가 유일한 정답인 상황까지 구분하지는 않습니다.</p>';
-    }
-
-    panel.innerHTML =
-      '<div class="feedback-headline">' + headline + '</div>' +
-      '<div class="feedback-recommend">엔진 추천: <strong>' + dp.decision.label + '</strong></div>' +
-      eqHtml + textureHtml +
-      '<ul class="reasons">' + reasonsHtml + '</ul>' +
-      icmHtml + allinNoteHtml +
-      '<p class="disclaimer-mini">※ 이 추천은 휴리스틱 기반 근사치이며, 완벽한 GTO 솔버 결과가 아닙니다.</p>';
-  }
-
-  function renderStats() {
-    var s = state.stats;
-    var pct = s.total ? Math.round((s.correct / s.total) * 1000) / 10 : 0;
-    document.getElementById('stat-total').textContent = s.total;
-    document.getElementById('stat-correct').textContent = s.correct;
-    document.getElementById('stat-pct').textContent = pct + '%';
-
-    var rows = ['preflop', 'flop', 'turn', 'river'].map(function (st) {
-      var b = s.byStreet[st];
-      var p = b.total ? Math.round((b.correct / b.total) * 1000) / 10 : 0;
-      return '<div class="street-stat-row"><span>' + STREET_LABEL[st] + '</span><span>' + b.correct + '/' + b.total + '</span><span>' + p + '%</span></div>';
-    }).join('');
-    document.getElementById('street-stats').innerHTML = rows;
-  }
-
-  function renderSettingsUI() {
-    document.getElementById('street-focus-select').value = state.settings.streetFocus;
-    document.getElementById('min-stack-input').value = state.settings.minStack;
-    document.getElementById('max-stack-input').value = state.settings.maxStack;
-    document.getElementById('table-size-select').value = state.settings.tableSize;
-    document.getElementById('game-type-select').value = state.settings.gameType;
-    updateICMVisibility();
-    updateTableSizeBadges();
-  }
-
-  function updateICMVisibility() {
-    var el = document.getElementById('c-icm-section');
-    if (el) el.style.display = state.settings.gameType === 'tournament' ? 'block' : 'none';
-  }
-
-  // Table size is a single, global setting (state.settings.tableSize) shared across all three
-  // tabs. The custom-input and range-chart tabs used to have their own independent table-size
-  // dropdowns, which caused a real bug: changing the size in one place didn't update position
-  // options anywhere else, so it looked like "position doesn't change with table size." Now
-  // those tabs just show a read-only badge that always reflects the one global setting.
-  function tableSizeLabel(n) {
-    return n === 9 ? '9-max (풀링)' : n + '-max';
-  }
-  function updateTableSizeBadges() {
-    var label = tableSizeLabel(state.settings.tableSize);
-    var c = document.getElementById('c-tablesize-badge');
-    if (c) c.textContent = label;
-    // the chart tab's table-size control is a real <select> (not a read-only badge) so the
-    // range-chart screen can change table size inline, without opening the shared settings panel.
-    var chSelect = document.getElementById('chart-tablesize-select');
-    if (chSelect) chSelect.value = String(state.settings.tableSize);
-  }
-  function openSettingsPanel() {
-    var panel = document.getElementById('settings-panel');
-    panel.style.display = 'block';
-    // the settings panel lives near the top of the page, above the custom/chart tab content -
-    // opening it from a tab-local "변경" button with no scroll made it look like nothing happened
-    // if the user was scrolled down into that tab's content. Bring it into view explicitly.
-    if (typeof panel.scrollIntoView === 'function') {
-      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
-  // Shared by the settings-panel table-size select AND the chart tab's inline table-size select,
-  // so both stay in sync and both apply the change everywhere immediately (positions, chart, etc).
-  function applyTableSizeChange(newSize) {
-    state.settings.tableSize = Number(newSize) || 6;
-    saveSettings();
-    updateTableSizeBadges();
-    refreshCustomPositions();
-    // the position sequence (who opened/3-bet/etc) is tied to the old table's seat list - a
-    // different table size has different positions, so start the sequence over.
-    state.chartActions = {};
-    state.chartFocusPos = null;
-    if (state.mode === 'chart' && state.chartStreet === 'preflop') {
-      syncChartFromSequence();
-    }
-  }
-
-  function resetStats() {
-    if (!confirm('학습 기록을 초기화할까요?')) return;
-    state.stats = emptyStats();
-    saveStats();
-    renderStats();
-  }
-
-  // ---------- position validity helpers ----------
-  // A player can only "face" an opponent whose action would actually have happened before
-  // (or after) theirs in preflop order - e.g. two players can never both be SB, and a hero
-  // responding to an open must have someone acting earlier than them at the table.
-  var SITUATIONS_HERO_EXCLUDE_LAST = ['unopened', 'rfi', 'threebet', 'vs3bet']; // hero can't be the last-to-act (BB) - BB never opens
-  var SITUATIONS_HERO_EXCLUDE_FIRST = ['open', 'vsopen', 'fourbet', 'vs4bet']; // hero needs someone before them
-  var SITUATIONS_OPP_BEFORE_HERO = ['open', 'vsopen', 'fourbet', 'vs4bet']; // opponent must have acted earlier
-  var SITUATIONS_OPP_AFTER_HERO = ['threebet', 'vs3bet', 'rfi']; // opponent must act later (re-raising hero, or calling hero's RFI)
-
-  function heroPositionOptions(order, situation) {
-    if (SITUATIONS_HERO_EXCLUDE_LAST.indexOf(situation) !== -1) return order.slice(0, order.length - 1);
-    if (SITUATIONS_HERO_EXCLUDE_FIRST.indexOf(situation) !== -1) return order.slice(1);
-    return order;
-  }
-  function opponentPositionOptions(order, situation, heroPos) {
-    var idx = order.indexOf(heroPos);
-    if (idx < 0) return [];
-    if (SITUATIONS_OPP_BEFORE_HERO.indexOf(situation) !== -1) return order.slice(0, idx);
-    if (SITUATIONS_OPP_AFTER_HERO.indexOf(situation) !== -1) return order.slice(idx + 1);
-    return [];
-  }
-  function optionsHtml(list) {
-    return list.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
-  }
-  function fillSelectPreserving(selectEl, options, preferredDefault) {
-    var prevValue = selectEl.value;
-    selectEl.innerHTML = optionsHtml(options);
-    if (options.indexOf(prevValue) !== -1) {
-      selectEl.value = prevValue;
-    } else if (preferredDefault && options.indexOf(preferredDefault) !== -1) {
-      selectEl.value = preferredDefault;
-    } else if (options.length) {
-      selectEl.value = options[0];
-    }
-  }
-
-  // ---------- custom scenario mode ----------
-  function populateStaticSelects() {
-    document.getElementById('c-hero-pickers').innerHTML = cardPickerHtml('c-hero-0') + cardPickerHtml('c-hero-1');
-    renderBoardPickers(3);
-    renderBoardPickers(3, 'chart-board-', 'chart-board-pickers');
-    refreshCustomPositions();
-    refreshChartVillainRangeOptions();
-  }
-
-  function refreshCustomPositions() {
-    var tableSize = state.settings.tableSize;
-    var street = document.getElementById('c-street').value;
-    var order = Preflop.positionsFor(tableSize);
-    var facingType = document.getElementById('c-facing-type').value;
-
-    var heroOptions = street === 'preflop' ? heroPositionOptions(order, facingType) : order;
-    fillSelectPreserving(document.getElementById('c-pos'), heroOptions, 'BTN');
-    var heroPos = document.getElementById('c-pos').value;
-
-    if (street === 'preflop' && facingType !== 'unopened') {
-      var oppOptions = opponentPositionOptions(order, facingType, heroPos);
-      fillSelectPreserving(document.getElementById('c-villain-pos'), oppOptions, oppOptions[0]);
-    }
-
-    // range-basis position (postflop only) - not positionally constrained, just a seed range
-    var rangePosSelect = document.getElementById('c-range-pos');
-    var prevRangeVal = rangePosSelect.value;
-    rangePosSelect.innerHTML = '<option value="unknown">잘 모름 (넓게 추정)</option>' + optionsHtml(order);
-    if (order.indexOf(prevRangeVal) !== -1 || prevRangeVal === 'unknown') rangePosSelect.value = prevRangeVal;
-  }
-
-  // Populates the postflop-chart's "상대 레인지 기준" select. This used to be bundled together
-  // with the preflop hero/opponent position selects, but those were removed in favor of the
-  // click-to-act position sequence (see computeChartSequence/renderChartSequenceStrip) - this
-  // function now only handles the one thing still needed here: the postflop villain-range list.
-  function refreshChartVillainRangeOptions() {
-    var tableSize = state.settings.tableSize;
-    var order = Preflop.positionsFor(tableSize);
-
-    // range-basis position for the postflop chart's villain range. Three kinds of options:
-    // 1) "derived" - the EXACT range implied by the preflop situation the user just came from
-    //    (set by deriveFlopContext/goToFlopFromPreflop, not approximated), shown first and
-    //    auto-selected whenever available.
-    // 2) synthetic "pct:N" entries approximating a caller's/opener's/3-bettor's range width by
-    //    hand-count percentile, for when the user wants to override the derived range manually.
-    // 3) real positions (same as the preflop chart's own position list).
-    var rangePosSelect = document.getElementById('chart-villain-range-pos');
-    var prevRangeVal = rangePosSelect.value;
-    var derivedOption = state.chartDerivedLabel
-      ? '<option value="derived">실제 레인지 (프리플랍 연동: ' + state.chartDerivedLabel + ')</option>'
-      : '';
-    var presetOptions = CHART_RANGE_APPROX_OPTIONS.map(function (o) {
-      return '<option value="pct:' + o.pct + '">' + o.label + '</option>';
-    }).join('');
-    rangePosSelect.innerHTML = '<option value="unknown">잘 모름 (넓게 추정)</option>' + derivedOption + presetOptions + optionsHtml(order);
-    if (order.indexOf(prevRangeVal) !== -1 || prevRangeVal === 'unknown' || prevRangeVal === 'derived' || /^pct:\d+(\.\d+)?$/.test(prevRangeVal)) {
-      rangePosSelect.value = prevRangeVal;
-    }
-  }
-
-  function onStreetChange() {
-    var street = document.getElementById('c-street').value;
-    var isPreflop = street === 'preflop';
-    document.getElementById('c-preflop-fields').style.display = isPreflop ? 'block' : 'none';
-    document.getElementById('c-postflop-fields').style.display = isPreflop ? 'none' : 'block';
-    if (!isPreflop) {
-      var count = street === 'flop' ? 3 : street === 'turn' ? 4 : 5;
-      renderBoardPickers(count);
-    }
-    refreshCustomPositions();
-  }
-
-  // ---------- range chart: connected preflop -> flop -> turn -> river flow ----------
-  var CHART_STREET_LABEL = { preflop: '프리플랍', flop: '플랍', turn: '턴', river: '리버' };
-  var CHART_RANGE_APPROX_OPTIONS = [
-    { pct: 42, label: '와이드 콜링 레인지 근사 (~42%)' },
-    { pct: 25, label: '오프너 레인지 근사 (~25%, 싱글레이즈팟)' },
-    { pct: 14, label: '3벳 콜링 레인지 근사 (~14%)' },
-    { pct: 8, label: '3벳 레인지 근사 (~8%)' },
-  ];
-
-  function onChartVillainActionChange() {
-    var sel = document.getElementById('chart-villain-action').value;
-    document.getElementById('chart-villain-bet-row').style.display = sel === 'bet' ? 'flex' : 'none';
-  }
-
-  // Derives the flop context (pot size, who's the aggressor, who's in position, and villain's
-  // EXACT continuing range) from whichever position is currently focused in the sequence AND
-  // the action that was chosen for it - no guessing, no separate presets to pick from. Pot sizes
-  // mirror the same 2.3bb open / 6.9bb 3-bet / 16bb 4-bet conventions used elsewhere in the chart.
-  // Returns null when there's nothing sensible to transition to yet (no action chosen, hero
-  // folded, or the degenerate "BB somehow reaches an unopened pot" edge case).
-  function deriveFlopContext() {
-    var tableSize = state.settings.tableSize;
-    var seq = computeChartSequence(tableSize);
-    var entry = null;
-    for (var i = 0; i < seq.length; i++) { if (seq[i].pos === state.chartFocusPos) { entry = seq[i]; break; } }
-    if (!entry || !entry.action || entry.action === 'fold') return null;
-
-    var heroPos = entry.pos;
-    function ipVs(villainPos) {
-      return Scenario.postflopIndex(heroPos, tableSize) > Scenario.postflopIndex(villainPos, tableSize);
-    }
-
-    if (entry.facingType === 'unopened') {
-      // hero opens (raise) with nobody having acted yet. There's no more "assumed caller"
-      // selector - default to BB, the single most common defender, unless hero IS BB (a
-      // degenerate case that shouldn't normally be reachable: if everyone folds to BB the hand
-      // is already over uncontested, there's no real "BB opens" decision to transition from).
-      if (heroPos === 'BB') return null;
-      var assumedCaller = 'BB';
-      var facingOpen = { type: 'open', openerPos: heroPos, sizeBB: 2.3, potBB: 3.8, toCallBB: 2.3 };
-      var callerRange = Preflop.rangeBucketsForFacing(assumedCaller, facingOpen, tableSize, { iterations: 150 }).call;
-      return {
-        potBB: 6.1, heroIsAggressor: true, heroInPosition: ipVs(assumedCaller),
-        villainRange: callerRange, villainLabel: assumedCaller + ' 콜 레인지',
-        transitionLabel: '▶ ' + assumedCaller + ' 콜 받고 플랍으로',
+      var action = actionsList[actionIdx++];
+      cursorIdx = nextIdx;
+      var rec = {
+        pos: nextPos, street: street, level: level, action: action,
+        potBB: potBB, toCallBB: toCallBB, currentBetBB: currentBetBB,
+        aggressorPos: aggressorPos, handAggressorPos: handAggressorPos,
+        liveOpponents: live.filter(function (x) { return x !== nextPos; }),
+        board: boardRevealed.slice(),
       };
-    }
+      stillNeedToAct.splice(stillNeedToAct.indexOf(nextPos), 1);
 
-    var villainPos = entry.facingOppPos; // whoever opened/3-bet/4-bet before hero acted here
-
-    if (entry.action === 'call') {
-      if (entry.facingType === 'open') {
-        return {
-          potBB: 6.1, heroIsAggressor: false, heroInPosition: ipVs(villainPos),
-          villainRange: Preflop.openingRange(villainPos, tableSize), villainLabel: villainPos + ' 오픈 레인지',
-          transitionLabel: '▶ 콜하고 플랍으로',
-        };
+      if (action === 'fold') {
+        folded[nextPos] = true;
+      } else if (action === 'check') {
+        // no chip movement
+      } else if (action === 'call') {
+        potBB = round1(potBB + toCallBB);
+        contributed[nextPos] = currentBetBB;
+      } else {
+        // raise / bet / allin
+        var sizing = sizingForTurn({
+          street: street, level: level, potBB: potBB, toCallBB: toCallBB,
+          currentBetBB: currentBetBB, stackBB: stackBB, action: action,
+        });
+        var newTotalBB = Math.max(sizing.totalBB, currentBetBB + 0.1);
+        potBB = round1(potBB + (newTotalBB - (contributed[nextPos] || 0)));
+        contributed[nextPos] = newTotalBB;
+        currentBetBB = newTotalBB;
+        aggressorPos = nextPos;
+        handAggressorPos = nextPos;
+        level = Math.min(level + 1, street === 'preflop' ? 3 : 2);
+        stillNeedToAct = live.filter(function (x) { return x !== nextPos; });
+        rec.sizeBB = newTotalBB;
       }
-      if (entry.facingType === 'threebet') {
-        return {
-          potBB: 15.3, heroIsAggressor: false, heroInPosition: ipVs(villainPos),
-          villainRange: Preflop.threeBetRange(villainPos, heroPos, tableSize), villainLabel: villainPos + ' 3벳 레인지',
-          transitionLabel: '▶ 콜하고 플랍으로',
-        };
-      }
-      // fourbet
-      return {
-        potBB: 33.5, heroIsAggressor: false, heroInPosition: ipVs(villainPos),
-        villainRange: Preflop.fourBetRange(villainPos), villainLabel: villainPos + ' 4벳 레인지',
-        transitionLabel: '▶ 콜하고 플랍으로',
-      };
+      turns.push(rec);
     }
 
-    // entry.action is 'raise' or 'allin' - hero re-raises over villainPos, who now faces hero's
-    // raise. No 5-bet is modeled (bounded model, same as the chart itself), so facing a 4-bet
-    // only ever reaches here via 'allin', which is approximated with the same numbers as a call.
-    if (entry.facingType === 'fourbet') {
-      return {
-        potBB: 33.5, heroIsAggressor: false, heroInPosition: ipVs(villainPos),
-        villainRange: Preflop.fourBetRange(villainPos), villainLabel: villainPos + ' 4벳 레인지',
-        transitionLabel: '▶ 콜하고 플랍으로',
-      };
-    }
-    if (entry.facingType === 'open') {
-      // hero 3-bets over villainPos's open; villainPos now calls hero's 3-bet.
-      var facingThreeBet = { type: 'threebet', openerPos: villainPos, threebettorPos: heroPos, sizeBB: 6.9, potBB: 10.7, toCallBB: 4.6 };
-      var vCall3 = Preflop.rangeBucketsForFacing(villainPos, facingThreeBet, tableSize, { iterations: 150 }).call;
-      return {
-        potBB: 15.3, heroIsAggressor: true, heroInPosition: ipVs(villainPos),
-        villainRange: vCall3, villainLabel: villainPos + ' 3벳 콜 레인지',
-        transitionLabel: '▶ ' + villainPos + ' 콜 받고 플랍으로',
-      };
-    }
-    // facingType 'threebet': hero 4-bets over villainPos's 3-bet; villainPos now calls hero's 4-bet.
-    var facingFourBet = { type: 'fourbet', fourbettorPos: heroPos, sizeBB: 16, potBB: 1.5 + 6.9 + 16, toCallBB: 16 - 6.9 };
-    var vCall4 = Preflop.rangeBucketsForFacing(villainPos, facingFourBet, tableSize, { iterations: 150 }).call;
-    return {
-      potBB: 33.5, heroIsAggressor: true, heroInPosition: ipVs(villainPos),
-      villainRange: vCall4, villainLabel: villainPos + ' 4벳 콜 레인지',
-      transitionLabel: '▶ ' + villainPos + ' 콜 받고 플랍으로',
-    };
+    var pending = (turns.length && turns[turns.length - 1].action === null) ? turns[turns.length - 1] : null;
+    return { turns: turns, board: board5, folded: folded, street: street, pending: pending };
   }
 
-  function updateChartToFlopButtonLabel() {
-    var ctx = deriveFlopContext();
-    var btn = document.getElementById('chart-to-flop-btn');
-    if (!ctx) {
-      btn.style.display = 'none';
-      return;
+  // ---------- action vocabulary per (street, level) ----------
+  // Postflop stays unaffected by stack-tier all-in framing (that's a preflop-only concept in this
+  // engine, matching poker-preflop.js's stackTierAdjust which has no postflop equivalent).
+  function actionsAvailable(street, level, allRaisesAreAllin) {
+    if (street === 'preflop') {
+      if (level === 0) return allRaisesAreAllin ? ['fold', 'allin'] : ['fold', 'raise'];
+      if (level < 3) return allRaisesAreAllin ? ['fold', 'call', 'allin'] : ['fold', 'call', 'raise', 'allin'];
+      return ['fold', 'call', 'allin'];
     }
-    btn.style.display = 'inline-block';
-    btn.textContent = ctx.transitionLabel;
+    if (level === 0) return ['check', 'bet'];
+    if (level < 2) return ['fold', 'call', 'raise', 'allin'];
+    return ['fold', 'call', 'allin'];
   }
 
-  function updateChartStreetHeader() {
-    document.getElementById('chart-title').textContent = CHART_STREET_LABEL[state.chartStreet] + ' 레인지 차트';
-    var isAggressor = document.getElementById('chart-hero-aggressor').value === 'yes';
-    var isIP = document.getElementById('chart-hero-ip').value === 'yes';
-    var pot = document.getElementById('chart-pot').value;
-    document.getElementById('chart-context-summary').textContent =
-      (isAggressor ? '내가 어그레서' : '내가 디펜더') + ' · ' + (isIP ? 'IP' : 'OOP') + ' · 팟 ' + pot + 'bb';
-    var nextBtn = document.getElementById('chart-next-street-btn');
-    if (state.chartStreet === 'river') {
-      nextBtn.style.display = 'none';
+  // ---------- preflop range buckets for the position currently on turn (stack-depth aware) ----------
+  function computePreflopBuckets(pos, level, aggressorPos, tableSize, stackBB) {
+    var adj = Preflop.stackTierAdjust(stackBB);
+    var iterations = 150;
+    var raiseSet = new Set(), callSet = new Set(), allinSet = new Set();
+
+    if (level === 0) {
+      raiseSet = Preflop.openingRangeAtStack(pos, tableSize, stackBB);
+      if (adj.allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
+    } else if (level === 1) {
+      raiseSet = Preflop.threeBetRangeAtStack(pos, aggressorPos, tableSize, stackBB);
+      var facingOpen = { type: 'open', openerPos: aggressorPos, sizeBB: 2.3, potBB: 3.8, toCallBB: 2.3 };
+      callSet = Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: iterations }).call;
+      if (adj.allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
+      else splitTopAsAllin(raiseSet, allinSet, 1.5);
+    } else if (level === 2) {
+      raiseSet = Preflop.fourBetRangeAtStack(pos, stackBB);
+      var facingThreeBet = { type: 'threebet', openerPos: pos, threebettorPos: aggressorPos, sizeBB: 6.9, potBB: 10.7, toCallBB: 4.6 };
+      callSet = Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: iterations }).call;
+      if (adj.allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
+      else splitTopAsAllin(raiseSet, allinSet, 1.0);
     } else {
-      nextBtn.style.display = 'inline-block';
-      nextBtn.textContent = state.chartStreet === 'flop' ? '▶ 턴 카드 추가' : '▶ 리버 카드 추가';
+      // level 3: facing a 4bet, bounded model (call or allin only, no 5bet)
+      var facingFourBet = { type: 'fourbet', fourbettorPos: aggressorPos, sizeBB: 16, potBB: 24.4, toCallBB: 9.1 };
+      callSet = Preflop.rangeBucketsForFacing(pos, facingFourBet, tableSize, { iterations: iterations }).call;
+      allinSet = Preflop.fourBetRangeAtStack(pos, stackBB);
+      allinSet.forEach(function (c) { callSet.delete(c); });
     }
+    return { raiseSet: raiseSet, callSet: callSet, allinSet: allinSet };
   }
 
-  function currentChartBoardCount() {
-    return document.getElementById('chart-board-pickers').querySelectorAll('.card-picker').length;
-  }
-
-  function randomCardAvoiding(used) {
-    var deck = Core.shuffle(Core.makeDeck(), Math.random);
-    for (var i = 0; i < deck.length; i++) {
-      if (used.indexOf(deck[i]) === -1) return deck[i];
+  // Reconstructs a still-live opponent's assumed range from their last preflop action, so
+  // postflop decisions have something to narrow against. An approximation when multiple
+  // opponents are still live (their ranges get unioned together), not exact multi-way equity.
+  function deriveRangeForPos(pos, allTurns, tableSize, stackBB) {
+    var last = null;
+    for (var i = 0; i < allTurns.length; i++) {
+      var t = allTurns[i];
+      if (t.pos === pos && t.street === 'preflop' && t.action) last = t;
     }
-    return null;
-  }
-
-  // Re-renders the board pickers for `newCount` cards, preserving any cards already chosen in
-  // the lower-indexed slots (so advancing a street doesn't lose the flop you already picked) and
-  // filling any new slots with a random card that doesn't collide with what's already there.
-  function extendChartBoardPickers(newCount) {
-    var existing = [];
-    for (var i = 0; i < currentChartBoardCount(); i++) {
-      var c = readCardPicker('chart-board-' + i);
-      if (c) existing.push(c);
+    if (!last) return Core.topPercent(60);
+    if (last.action === 'raise' || last.action === 'allin') {
+      if (last.level === 0) return Preflop.openingRangeAtStack(pos, tableSize, stackBB);
+      if (last.level === 1) return Preflop.threeBetRangeAtStack(pos, last.aggressorPos, tableSize, stackBB);
+      return Preflop.fourBetRangeAtStack(pos, stackBB);
     }
-    renderBoardPickers(newCount, 'chart-board-', 'chart-board-pickers');
-    var used = existing.slice();
-    for (var j = 0; j < newCount; j++) {
-      var card = j < existing.length ? existing[j] : randomCardAvoiding(used);
-      if (j >= existing.length) used.push(card);
-      document.getElementById('chart-board-' + j + '-rank').value = card[0];
-      document.getElementById('chart-board-' + j + '-suit').value = card[1];
+    if (last.action === 'call') {
+      if (last.level === 1) {
+        var facingOpen = { type: 'open', openerPos: last.aggressorPos, sizeBB: 2.3, potBB: 3.8, toCallBB: 2.3 };
+        return Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: 150 }).call;
+      }
+      if (last.level === 2) {
+        var facingThreeBet = { type: 'threebet', openerPos: pos, threebettorPos: last.aggressorPos, sizeBB: 6.9, potBB: 10.7, toCallBB: 4.6 };
+        return Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: 150 }).call;
+      }
+      if (last.level === 3) {
+        var facingFourBet = { type: 'fourbet', fourbettorPos: last.aggressorPos, sizeBB: 16, potBB: 24.4, toCallBB: 9.1 };
+        return Preflop.rangeBucketsForFacing(pos, facingFourBet, tableSize, { iterations: 150 }).call;
+      }
     }
+    return Core.topPercent(60);
   }
 
-  function regenerateChartBoard() {
-    var count = currentChartBoardCount();
-    renderBoardPickers(count, 'chart-board-', 'chart-board-pickers');
-    var used = [];
-    for (var i = 0; i < count; i++) {
-      var card = randomCardAvoiding(used);
-      used.push(card);
-      document.getElementById('chart-board-' + i + '-rank').value = card[0];
-      document.getElementById('chart-board-' + i + '-suit').value = card[1];
+  function computePostflopBucketsForTurn(turn, allTurns, tableSize, stackBB) {
+    var villainRange = new Set();
+    turn.liveOpponents.forEach(function (p) {
+      var r = deriveRangeForPos(p, allTurns, tableSize, stackBB);
+      r.forEach(function (c) { villainRange.add(c); });
+    });
+    var postflopOrder = Preflop.postflopOrderFor(tableSize);
+    var heroIdx = postflopOrder.indexOf(turn.pos);
+    var heroInPosition = turn.liveOpponents.length > 0 && turn.liveOpponents.every(function (p) {
+      return postflopOrder.indexOf(p) < heroIdx;
+    });
+    var heroIsAggressor = turn.pos === turn.handAggressorPos;
+    var betBB = turn.toCallBB > 0 ? turn.toCallBB : round1(turn.potBB * 0.65);
+    return Postflop.rangeBucketsOnBoard(turn.board, {
+      potBB: turn.potBB, toCallBB: turn.toCallBB, betBB: betBB,
+      villainRange: villainRange, heroIsAggressor: heroIsAggressor, heroInPosition: heroInPosition,
+      iterations: 100, rng: Math.random,
+    });
+  }
+
+  // ---------- rendering ----------
+  function renderPreflopGrid(buckets) {
+    var raiseSet = buckets.raiseSet, callSet = buckets.callSet, allinSet = buckets.allinSet;
+    var html = '';
+    for (var r = 0; r < 13; r++) {
+      for (var c = 0; c < 13; c++) {
+        var canon = chartCanonAt(r, c);
+        var cls = raiseSet.has(canon) ? 'action-raise' : allinSet.has(canon) ? 'action-allin' : callSet.has(canon) ? 'action-call' : 'action-fold';
+        html += '<div class="range-cell ' + cls + '" title="' + canon + '">' + canon + '</div>';
+      }
     }
-    computePostflopChart();
+    document.getElementById('range-grid').innerHTML = html;
+    function pct(n) { return Math.round((n / 169) * 1000) / 10; }
+    var info = '레이즈 ' + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
+    if (allinSet.size) info += ' · 올인 ' + allinSet.size + '핸드 (' + pct(allinSet.size) + '%)';
+    if (callSet.size) info += ' · 콜 ' + callSet.size + '핸드 (' + pct(callSet.size) + '%)';
+    document.getElementById('chart-info').textContent = info;
+    updateChartLegend('preflop');
   }
 
-  function goToFlopFromPreflop() {
-    var ctx = deriveFlopContext();
-    if (!ctx) return; // nothing decided yet for the focused position - button should be hidden anyway
-    document.getElementById('chart-pot').value = ctx.potBB;
-    document.getElementById('chart-hero-aggressor').value = ctx.heroIsAggressor ? 'yes' : 'no';
-    document.getElementById('chart-hero-ip').value = ctx.heroInPosition ? 'yes' : 'no';
-    document.getElementById('chart-villain-action').value = ctx.heroIsAggressor ? '0' : 'bet';
-    onChartVillainActionChange();
-    if (!ctx.heroIsAggressor) document.getElementById('chart-villain-bet').value = round1(ctx.potBB * 0.65);
+  function renderPostflopGrid(buckets, facingBet) {
+    var raiseSet = new Set();
+    buckets.raise.forEach(function (c) { raiseSet.add(c); });
+    buckets.bet.forEach(function (c) { raiseSet.add(c); });
+    var foldSet = new Set();
+    buckets.fold.forEach(function (c) { foldSet.add(c); });
+    buckets.check.forEach(function (c) { foldSet.add(c); });
+    var callSet = buckets.call;
 
-    state.chartDerivedVillainRange = ctx.villainRange;
-    state.chartDerivedLabel = ctx.villainLabel;
-    refreshChartVillainRangeOptions(); // rebuilds the range-pos <select> so it now includes "derived"
-    document.getElementById('chart-villain-range-pos').value = 'derived';
-
-    state.chartStreet = 'flop';
-    document.getElementById('chart-preflop-section').style.display = 'none';
-    document.getElementById('chart-postflop-section').style.display = 'block';
-    extendChartBoardPickers(3);
-    updateChartStreetHeader();
-    computePostflopChart();
-  }
-
-  function advanceToNextStreet() {
-    var order = ['flop', 'turn', 'river'];
-    var idx = order.indexOf(state.chartStreet);
-    if (idx === -1 || idx >= order.length - 1) return;
-    var newCount = order[idx + 1] === 'turn' ? 4 : 5;
-
-    // assume roughly a 2/3-pot bet got called on the street that just finished - a simple,
-    // transparent default (not a real solver simulation of the actual betting round, since a
-    // range chart can't know what any specific hand within the range actually did). Directly
-    // editable below if it doesn't match the real hand.
-    var newPot = round1((Number(document.getElementById('chart-pot').value) || 10) * 2.3);
-    document.getElementById('chart-pot').value = newPot;
-
-    var heroIsAggressor = document.getElementById('chart-hero-aggressor').value === 'yes';
-    document.getElementById('chart-villain-action').value = heroIsAggressor ? '0' : 'bet';
-    onChartVillainActionChange();
-    if (!heroIsAggressor) document.getElementById('chart-villain-bet').value = round1(newPot * 0.65);
-
-    state.chartStreet = order[idx + 1];
-    extendChartBoardPickers(newCount);
-    updateChartStreetHeader();
-    computePostflopChart();
-  }
-
-  function backToPreflop() {
-    state.chartStreet = 'preflop';
-    document.getElementById('chart-postflop-section').style.display = 'none';
-    document.getElementById('chart-preflop-section').style.display = 'block';
-    document.getElementById('chart-title').textContent = '프리플랍 레인지 차트';
-    // deliberately keeps the already-chosen position sequence intact - going back to preflop
-    // from flop is for trying a different board given the same line, not restarting the hand.
-    syncChartFromSequence();
+    var html = '';
+    for (var r = 0; r < 13; r++) {
+      for (var c = 0; c < 13; c++) {
+        var canon = chartCanonAt(r, c);
+        var cls = raiseSet.has(canon) ? 'action-raise' : callSet.has(canon) ? 'action-call' : 'action-fold';
+        html += '<div class="range-cell ' + cls + '" title="' + canon + '">' + canon + '</div>';
+      }
+    }
+    document.getElementById('range-grid').innerHTML = html;
+    function pct(n) { return Math.round((n / 169) * 1000) / 10; }
+    var info = (facingBet ? '레이즈 ' : '벳 ') + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
+    if (callSet.size) info += ' · 콜 ' + callSet.size + '핸드 (' + pct(callSet.size) + '%)';
+    info += ' · ' + (facingBet ? '폴드 ' : '체크 ') + foldSet.size + '핸드 (' + pct(foldSet.size) + '%)';
+    document.getElementById('chart-info').textContent = info;
+    updateChartLegend(facingBet ? 'postflop-facingbet' : 'postflop-checked');
   }
 
   function updateChartLegend(mode) {
@@ -3313,21 +2814,15 @@
     var callLabel = document.getElementById('chart-legend-call-label');
     var foldLabel = document.getElementById('chart-legend-fold-label');
 
-    allinItem.style.display = 'none'; // only ever shown for the preflop vs4bet situation
+    allinItem.style.display = 'none';
     raiseItem.style.display = 'inline-flex';
     callItem.style.display = 'inline-flex';
     foldItem.style.display = 'inline-flex';
 
-    if (mode === 'postflop-pending') {
-      raiseLabel.textContent = '벳/레이즈';
-      callLabel.textContent = '콜';
-      foldLabel.textContent = '체크/폴드';
-      return;
-    }
     if (mode === 'postflop-checked') {
       raiseLabel.textContent = '벳';
       foldLabel.textContent = '체크';
-      callItem.style.display = 'none'; // no calling range exists when hero is first to act
+      callItem.style.display = 'none';
       return;
     }
     if (mode === 'postflop-facingbet') {
@@ -3336,670 +2831,160 @@
       foldLabel.textContent = '폴드';
       return;
     }
-    // preflop (default)
     raiseLabel.textContent = '레이즈';
     callLabel.textContent = '콜';
     foldLabel.textContent = '폴드';
-    var situation = document.getElementById('chart-situation').value;
-    allinItem.style.display = ['vs4bet', 'vsopen', 'vs3bet'].indexOf(situation) !== -1 ? 'inline-flex' : 'none';
+    allinItem.style.display = 'inline-flex';
   }
 
-  function onFacingTypeChange() {
-    var type = document.getElementById('c-facing-type').value;
-    var show = type !== 'unopened';
-    ['c-villain-pos-row', 'c-villain-raise-row', 'c-pf-pot-row', 'c-pf-call-row'].forEach(function (id) {
-      document.getElementById(id).style.display = show ? 'flex' : 'none';
+  function actionButtonLabel(action, pending, stackBB) {
+    if (action === 'fold') return '폴드';
+    if (action === 'check') return '체크';
+    if (action === 'call') return '콜' + (pending.toCallBB ? ' ' + round1(pending.toCallBB) + 'bb' : '');
+    if (action === 'allin') return '올인 ' + round1(stackBB) + 'bb';
+    var sizing = sizingForTurn({
+      street: pending.street, level: pending.level, potBB: pending.potBB,
+      toCallBB: pending.toCallBB, currentBetBB: pending.currentBetBB, stackBB: stackBB, action: 'raise',
     });
-    refreshCustomPositions();
-    if (!show) return;
-    var defaultSize = { open: 2.3, threebet: 6.9, fourbet: 16 };
-    var heroPrior = { open: 0, threebet: 2.3, fourbet: 6.9 };
-    var sizeBB = defaultSize[type];
-    document.getElementById('c-villain-raise').value = sizeBB;
-    document.getElementById('c-pf-pot').value = round1(1.5 + heroPrior[type] + sizeBB);
-    document.getElementById('c-pf-call').value = round1(sizeBB - heroPrior[type]);
+    var label = pending.street === 'preflop' ? '레이즈' : (pending.level === 0 ? '벳' : '레이즈');
+    return label + ' ' + round1(sizing.totalBB) + 'bb';
   }
 
-  function onVillainActionChange() {
-    var sel = document.getElementById('c-villain-action').value;
-    document.getElementById('c-villain-bet-row').style.display = sel === 'bet' ? 'flex' : 'none';
+  function renderBoardDisplay(board) {
+    var el = document.getElementById('hand-board-display');
+    if (!board || !board.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+    el.innerHTML = board.map(cardHtml).join('');
   }
 
-  // ---------- ICM (tournament mode) ----------
-  var ICM_SHAPE_EXP = { flat: 1.0, medium: 1.6, topheavy: 2.5 };
-
-  function readICMInputs() {
-    return {
-      villainStack: Number(document.getElementById('c-icm-villain-stack').value) || 100,
-      remaining: Math.max(2, Number(document.getElementById('c-icm-remaining').value) || 2),
-      paid: Math.max(1, Number(document.getElementById('c-icm-paid').value) || 1),
-      otherStacksRaw: document.getElementById('c-icm-other-stacks').value || '',
-      shape: document.getElementById('c-icm-payout-shape').value,
-    };
-  }
-
-  // Builds an ICM call/fold analysis for the current decision point. `heroStack`/`potBB`/
-  // `toCallBB`/`equity` come from whatever preflop or postflop decision was just computed -
-  // this only runs when the user is in tournament mode and actually facing a bet/raise,
-  // since ICM pressure is only relevant to a call/fold-style choice.
-  function buildICMAnalysis(heroStack, potBB, toCallBB, equity) {
-    if (!ICM) return null;
-    var inputs = readICMInputs();
-    var remaining = inputs.remaining;
-    var paid = Math.min(inputs.paid, remaining);
-    var villainStack = inputs.villainStack;
-    var otherCount = Math.max(0, remaining - 2);
-    var otherStacks = inputs.otherStacksRaw.split(',')
-      .map(function (s) { return Number(s.trim()); })
-      .filter(function (n) { return !isNaN(n) && n > 0; });
-    // pad with a plausible average stack if the user didn't specify enough other players
-    var avgStack = Math.max(1, Math.round((heroStack + villainStack) / 2));
-    while (otherStacks.length < otherCount) otherStacks.push(avgStack);
-    otherStacks = otherStacks.slice(0, otherCount);
-    var stacks = [heroStack, villainStack].concat(otherStacks);
-    var weights = ICM.generatePayoutWeights(paid, ICM_SHAPE_EXP[inputs.shape] || 1.6);
-    var payouts = weights.map(function (w) { return w * 100; });
-    try {
-      return ICM.analyzeICMDecision({
-        stacks: stacks, payouts: payouts, heroIdx: 0, villainIdx: 1,
-        potBB: potBB, toCallBB: toCallBB, equity: equity,
-      });
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function buildCustomDP() {
-    var tableSize = state.settings.tableSize;
-    var street = document.getElementById('c-street').value;
-    var pos = document.getElementById('c-pos').value;
-    var stack = Number(document.getElementById('c-stack').value) || 100;
-    var hero1 = readCardPicker('c-hero-0');
-    var hero2 = readCardPicker('c-hero-1');
-    var errors = [];
-    if (!hero1 || !hero2) errors.push('내 핸드 2장을 모두 선택해주세요.');
-    var heroCards = [hero1, hero2].filter(Boolean);
-    if (heroCards.length === 2 && heroCards[0] === heroCards[1]) {
-      errors.push('내 핸드에 같은 카드를 두 번 선택할 수 없습니다.');
-    }
-
-    if (street === 'preflop') {
-      if (errors.length) return { error: errors.join(' ') };
-      var facingType = document.getElementById('c-facing-type').value;
-      var facing, potBB;
-      if (facingType === 'unopened') {
-        facing = { type: 'unopened' };
-        potBB = 1.5;
-      } else {
-        var villainPos = document.getElementById('c-villain-pos').value;
-        var sizeBB = Number(document.getElementById('c-villain-raise').value) || 2.3;
-        var pfPot = Number(document.getElementById('c-pf-pot').value);
-        if (isNaN(pfPot)) pfPot = 1.5 + sizeBB;
-        var pfCall = Number(document.getElementById('c-pf-call').value);
-        if (isNaN(pfCall)) pfCall = sizeBB;
-        if (facingType === 'open') {
-          facing = { type: 'open', openerPos: villainPos, sizeBB: sizeBB, potBB: pfPot, toCallBB: pfCall };
-        } else if (facingType === 'threebet') {
-          facing = { type: 'threebet', openerPos: pos, threebettorPos: villainPos, sizeBB: sizeBB, potBB: pfPot, toCallBB: pfCall };
-        } else {
-          facing = { type: 'fourbet', fourbettorPos: villainPos, sizeBB: sizeBB, potBB: pfPot, toCallBB: pfCall };
-        }
-        potBB = pfPot;
-      }
-      var decision = Preflop.decidePreflop(heroCards, pos, facing, { tableSize: tableSize, rng: Math.random, iterations: 400 });
-      var pfIcm = null;
-      if (state.settings.gameType === 'tournament' && facing.toCallBB > 0 && typeof decision.equity === 'number') {
-        pfIcm = buildICMAnalysis(stack, potBB, facing.toCallBB, decision.equity);
-      }
-      return {
-        dp: {
-          street: 'preflop', pos: pos, heroCards: heroCards, board: [],
-          facing: facing, potBB: potBB, decision: decision, tableSize: tableSize, effStackBB: stack, custom: true,
-          icm: pfIcm,
-        },
-      };
-    }
-
-    var boardCount = street === 'flop' ? 3 : street === 'turn' ? 4 : 5;
-    var board = [];
-    var boardIncomplete = false;
-    for (var i = 0; i < boardCount; i++) {
-      var c = readCardPicker('c-board-' + i);
-      if (!c) boardIncomplete = true;
-      else board.push(c);
-    }
-    if (boardIncomplete) errors.push('보드 카드를 모두 선택해주세요.');
-
-    if (!boardIncomplete && heroCards.length === 2) {
-      var allCards = heroCards.concat(board);
-      var uniq = {};
-      var dup = false;
-      allCards.forEach(function (cd) { if (uniq[cd]) dup = true; uniq[cd] = true; });
-      if (dup) errors.push('카드가 중복되었습니다. 같은 카드를 두 번 선택할 수 없습니다.');
-    }
-    if (errors.length) return { error: errors.join(' ') };
-
-    var pot = Number(document.getElementById('c-pot').value) || 10;
-    var villainActionSel = document.getElementById('c-villain-action').value;
-    var toCallBB = villainActionSel === 'bet' ? (Number(document.getElementById('c-villain-bet').value) || 0) : 0;
-    var heroIsAggressor = document.getElementById('c-hero-aggressor').value === 'yes';
-    var heroInPosition = document.getElementById('c-hero-ip').value === 'yes';
-    var rangePos = document.getElementById('c-range-pos').value;
-    var rangeStyle = document.getElementById('c-range-style').value;
-
-    var villainRange = rangePos === 'unknown' ? Core.topPercent(70) : Preflop.openingRange(rangePos, tableSize);
-    if (rangeStyle !== 'none') {
-      villainRange = Postflop.narrowRangeForAction(villainRange, board, heroCards.concat(board), rangeStyle);
-    }
-
-    var postDecision = Postflop.decidePostflop({
-      heroCards: heroCards, board: board, potBB: pot, toCallBB: toCallBB, betBB: toCallBB,
-      villainRange: villainRange, heroIsAggressor: heroIsAggressor, heroInPosition: heroInPosition,
-      iterations: 600, rng: Math.random,
-    });
-
-    var pfIcm2 = null;
-    if (state.settings.gameType === 'tournament' && toCallBB > 0 && typeof postDecision.equity === 'number') {
-      pfIcm2 = buildICMAnalysis(stack, pot, toCallBB, postDecision.equity);
-    }
-
-    return {
-      dp: {
-        street: street, pos: pos, heroCards: heroCards, board: board,
-        facing: { type: 'postflop', toCallBB: toCallBB, betBB: toCallBB, heroIsAggressor: heroIsAggressor, heroInPosition: heroInPosition },
-        potBB: pot, decision: postDecision, tableSize: tableSize, effStackBB: stack, custom: true,
-        icm: pfIcm2,
-      },
-    };
-  }
-
-  function onCustomSubmit() {
-    var result = buildCustomDP();
-    var errEl = document.getElementById('c-error');
-    if (result.error) {
-      errEl.textContent = result.error;
-      errEl.style.display = 'block';
-      return;
-    }
-    errEl.style.display = 'none';
-    state.currentDP = result.dp;
-    state.currentHand = null;
-    state.answered = false;
-    document.getElementById('custom-panel').style.display = 'none';
-    document.getElementById('scenario-panel').style.display = 'block';
-    document.getElementById('bottom-actions').style.display = 'block';
-    document.getElementById('next-hand-btn').textContent = '다른 상황 입력하기 ✍️';
-    render();
-  }
-
-  function setActiveTab(activeId) {
-    ['tab-random', 'tab-custom', 'tab-chart'].forEach(function (id) {
-      document.getElementById(id).classList.toggle('active', id === activeId);
-    });
-  }
-
-  function hideAllModePanels() {
-    document.getElementById('scenario-panel').style.display = 'none';
-    document.getElementById('custom-panel').style.display = 'none';
-    document.getElementById('chart-panel').style.display = 'none';
-    document.getElementById('bottom-actions').style.display = 'none';
-  }
-
-  function showRandomMode() {
-    state.mode = 'random';
-    setActiveTab('tab-random');
-    hideAllModePanels();
-    document.body.classList.remove('chart-mode');
-    document.getElementById('scenario-panel').style.display = 'block';
-    document.getElementById('bottom-actions').style.display = 'block';
-    document.getElementById('next-hand-btn').textContent = '다음 핸드 ▶';
-    generateScenario();
-  }
-
-  function showCustomMode() {
-    state.mode = 'custom';
-    setActiveTab('tab-custom');
-    hideAllModePanels();
-    document.body.classList.remove('chart-mode');
-    document.getElementById('c-error').style.display = 'none';
-    document.getElementById('custom-panel').style.display = 'block';
-  }
-
-  function showChartMode() {
-    state.mode = 'chart';
-    setActiveTab('tab-chart');
-    hideAllModePanels();
-    // the range chart tab is the one view designed to fit a single screen with no scrolling -
-    // this class hides the training-progress widgets (irrelevant here) and switches the app
-    // shell to a fixed-height flex layout so the position strip + grid always fit.
-    document.body.classList.add('chart-mode');
-    document.getElementById('chart-panel').style.display = 'flex';
-    // always land back on the preflop starting point when (re-)entering the chart tab
-    state.chartStreet = 'preflop';
-    document.getElementById('chart-postflop-section').style.display = 'none';
-    document.getElementById('chart-preflop-section').style.display = 'block';
-    document.getElementById('chart-title').textContent = '프리플랍 레인지 차트';
-    // (re-)entering the chart tab always starts the position sequence fresh, same as it always
-    // lands back on the preflop street.
-    state.chartActions = {};
-    state.chartFocusPos = null;
-    syncChartFromSequence();
-  }
-
-  function onNextHandClick() {
-    if (state.mode === 'custom') {
-      hideAllModePanels();
-      document.getElementById('c-error').style.display = 'none';
-      document.getElementById('custom-panel').style.display = 'block';
-    } else if (state.mode === 'random') {
-      generateScenario();
-    }
-  }
-
-  // ---------- range chart ----------
-  var CHART_RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
-
-  function chartCanonAt(row, col) {
-    if (row === col) return CHART_RANKS[row] + CHART_RANKS[row];
-    if (row < col) return CHART_RANKS[row] + CHART_RANKS[col] + 's';
-    return CHART_RANKS[col] + CHART_RANKS[row] + 'o';
-  }
-
-  // Moves the top `pct`% of the 169 canonical hands (by hand strength) OUT of `raiseSet` and
-  // INTO `allinSet`, but only for hands that were actually in raiseSet to begin with - i.e. it
-  // never adds hands that weren't already part of the aggressive range, it just relabels the
-  // very best of them as "shove" instead of "standard-sized raise". Mutates both sets in place.
-  function splitTopAsAllin(raiseSet, allinSet, pct) {
-    var elite = Core.topPercent(pct);
-    elite.forEach(function (canon) {
-      if (raiseSet.has(canon)) {
-        raiseSet.delete(canon);
-        allinSet.add(canon);
-      }
-    });
-  }
-
-  // Buckets all 169 canonical hands into raise/call/allin sets for a GIVEN hero position under
-  // the current situation - factored out of renderChart() so the same logic can compute both
-  // the detailed 169-cell grid (for the selected position) and the compact preview bar shown
-  // for every position in the position strip.
-  function computeChartBuckets(pos, situation, oppPos, tableSize, opts) {
-    var iterations = (opts && opts.iterations) || 150;
-    var raiseSet = new Set();
-    var callSet = new Set();
-    var allinSet = new Set();
-
-    if (situation === 'rfi') {
-      raiseSet = Preflop.openingRange(pos, tableSize);
-    } else if (situation === 'vsopen') {
-      raiseSet = Preflop.threeBetRange(pos, oppPos, tableSize);
-      var facingOpen = { type: 'open', openerPos: oppPos, sizeBB: 2.3, potBB: 3.8, toCallBB: 2.3 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: iterations }).call;
-      // the very top of the 3-bet range (AA/KK-type hands) would realistically often just get
-      // jammed in rather than played as a standard-sized 3-bet, especially short-stacked/
-      // tournament-relevant - split that top slice out as its own "올인" category, same idea as
-      // the vs4bet all-in split below.
-      splitTopAsAllin(raiseSet, allinSet, 1.5);
-    } else if (situation === 'vs3bet') {
-      raiseSet = Preflop.fourBetRange(pos);
-      var facingThreeBet = { type: 'threebet', openerPos: pos, threebettorPos: oppPos, sizeBB: 6.9, potBB: 10.7, toCallBB: 4.6 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: iterations }).call;
-      // same idea one street later: the top of an already-narrow 4-bet range is a shove, not a
-      // standard-sized 4-bet.
-      splitTopAsAllin(raiseSet, allinSet, 1.0);
-    } else {
-      // Bounded model: facing a 4-bet, the engine only ever decides call-or-fold (no 5-bet
-      // modeled), so `raise` never appears here. But lumping every continuing hand into plain
-      // "call" hides a real distinction - the top of that range (QQ+/AK-type hands) is realistically
-      // getting all-in, not flat calling. Surface that top slice as its own "올인" category using
-      // the same premium-hand range used elsewhere as the 4bet-worthy threshold, layered over the
-      // call bucket so the chart shows 4 real categories here instead of just call/fold.
-      var facingFourBet = { type: 'fourbet', fourbettorPos: oppPos, sizeBB: 16, potBB: 1.5 + 6.9 + 16, toCallBB: 16 - 6.9 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingFourBet, tableSize, { iterations: iterations }).call;
-      allinSet = Preflop.fourBetRange(pos);
-      allinSet.forEach(function (canon) { callSet.delete(canon); });
-    }
-    return { raiseSet: raiseSet, callSet: callSet, allinSet: allinSet };
-  }
-
-  function renderChart() {
-    var tableSize = state.settings.tableSize;
-    var pos = document.getElementById('chart-pos').value;
-    var situation = document.getElementById('chart-situation').value;
-    var oppPos = document.getElementById('chart-opp-pos').value;
-
-    var buckets = computeChartBuckets(pos, situation, oppPos, tableSize, { iterations: 150 });
-    var raiseSet = buckets.raiseSet, callSet = buckets.callSet, allinSet = buckets.allinSet;
-
-    var html = '';
-    for (var r = 0; r < 13; r++) {
-      for (var c = 0; c < 13; c++) {
-        var canon = chartCanonAt(r, c);
-        var cls = raiseSet.has(canon) ? 'action-raise' : allinSet.has(canon) ? 'action-allin' : callSet.has(canon) ? 'action-call' : 'action-fold';
-        html += '<div class="range-cell ' + cls + '" title="' + canon + '">' + canon + '</div>';
-      }
-    }
-    document.getElementById('range-grid').innerHTML = html;
-
-    function pct(n) { return Math.round((n / 169) * 1000) / 10; }
-    var info = '레이즈 ' + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
-    if (allinSet.size) info += ' · 올인 ' + allinSet.size + '핸드 (' + pct(allinSet.size) + '%)';
-    if (callSet.size) info += ' · 콜 ' + callSet.size + '핸드 (' + pct(callSet.size) + '%)';
-    document.getElementById('chart-info').textContent = info;
-    updateChartLegend('preflop');
-  }
-
-  // ---------- sequential position action-builder (click-to-act, GTOWizard-node-style) ----------
-  // Instead of separately picking "situation" (RFI/vs-open/vs-3bet/vs-4bet) and an opponent
-  // position, the user walks through every seat at the table in actual preflop order and picks
-  // what that seat does (fold/call/raise/allin). Each pick determines what the NEXT seat faces:
-  // a raise/allin escalates the facing level by one (unopened -> open -> 3bet -> 4bet, capped at
-  // 4bet since no 5-bet is modeled anywhere in this engine); fold/call leave it unchanged. A seat
-  // with no chosen action yet behaves like a fold for this purpose, so the whole strip can always
-  // be computed and shown at once instead of being revealed one seat at a time.
-  function availableActionsFor(facingType) {
-    if (facingType === 'unopened') return ['fold', 'raise']; // no pot to call/shove over yet
-    if (facingType === 'fourbet') return ['fold', 'call', 'allin']; // bounded model: no 5-bet
-    return ['fold', 'call', 'raise', 'allin']; // facing an open or a 3-bet
-  }
-
-  function computeChartSequence(tableSize) {
-    var order = Preflop.positionsFor(tableSize);
-    var seq = [];
-    var facingType = 'unopened';
-    var facingOppPos = null;
-    for (var i = 0; i < order.length; i++) {
-      var pos = order[i];
-      var action = state.chartActions[pos] || null;
-      seq.push({ pos: pos, facingType: facingType, facingOppPos: facingOppPos, action: action });
-      if (action === 'raise' || action === 'allin') {
-        if (facingType === 'unopened') { facingType = 'open'; facingOppPos = pos; }
-        else if (facingType === 'open') { facingType = 'threebet'; facingOppPos = pos; }
-        else if (facingType === 'threebet') { facingType = 'fourbet'; facingOppPos = pos; }
-        // already fourbet: no escalation further, matches the bounded no-5-bet model
-      }
-    }
-    return seq;
-  }
-
-  function chartSituationForFacing(facingType) {
-    return { unopened: 'rfi', open: 'vsopen', threebet: 'vs3bet', fourbet: 'vs4bet' }[facingType];
-  }
-
-  function facingHintText(entry) {
-    if (entry.facingType === 'unopened') return '언오픈';
-    if (entry.facingType === 'open') return entry.facingOppPos + ' 오픈 대응';
-    if (entry.facingType === 'threebet') return entry.facingOppPos + ' 3벳 대응';
-    return entry.facingOppPos + ' 4벳 대응';
-  }
-
-  // bb-size label for the raise button specifically - fold/call/allin have fixed labels handled
-  // inline in renderChartSequenceCard. Reuses the exact same flat sizing model (Preflop.sizing())
-  // and facing-size constants already used by computeChartBuckets/deriveFlopContext.
-  function chartRaiseButtonLabel(entry, tableSize) {
-    var sizing = Preflop.sizing();
-    if (entry.facingType === 'unopened') return '레이즈 ' + round1(sizing.open) + 'bb';
-    if (entry.facingType === 'open') {
-      var ip = Preflop.inPosition(entry.pos, entry.facingOppPos, tableSize);
-      return '레이즈 ' + round1(sizing.open * (ip ? sizing.threeBetIP : sizing.threeBetOOP)) + 'bb';
-    }
-    // threebet
-    return '레이즈 ' + round1(6.9 * sizing.fourBetMultiplier) + 'bb';
-  }
-
-  function renderChartSequenceCard(entry, tableSize) {
-    var allowed = availableActionsFor(entry.facingType);
-    var labels = { fold: '폴드', call: '콜', raise: chartRaiseButtonLabel(entry, tableSize), allin: '올인' };
-    var buttonsHtml = ['fold', 'call', 'raise', 'allin'].map(function (a) {
-      var disabled = allowed.indexOf(a) === -1;
-      var chosen = entry.action === a;
-      var cls = 'pos-action-btn action-' + a + (chosen ? ' chosen' : '');
-      return '<button type="button" class="' + cls + '" data-pos="' + entry.pos + '" data-action="' + a + '"' + (disabled ? ' disabled' : '') + '>' + labels[a] + '</button>';
+  function renderHistoryStrip(turns) {
+    var completed = turns.filter(function (t) { return t.action !== null; });
+    var stripEl = document.getElementById('hand-history-strip');
+    if (!completed.length) { stripEl.innerHTML = ''; return; }
+    stripEl.innerHTML = completed.map(function (t, idx) {
+      var label = ACTION_LABEL[t.action] || t.action;
+      var sizeStr = t.sizeBB ? ' ' + round1(t.sizeBB) + 'bb' : '';
+      return '<div class="hand-turn-chip action-' + t.action + '" data-idx="' + idx + '" title="이 액션부터 다시 선택하려면 클릭">' +
+        '<span class="chip-street">' + STREET_LABEL[t.street] + '</span>' +
+        '<span class="chip-pos">' + t.pos + '</span>' +
+        '<span class="chip-action">' + label + sizeStr + '</span></div>';
     }).join('');
-    var isFocused = entry.pos === state.chartFocusPos;
-    return '<div class="pos-card' + (isFocused ? ' selected' : '') + (entry.action ? ' decided' : '') + '" data-pos="' + entry.pos + '">' +
-      '<div class="pos-card-label">' + entry.pos + '</div>' +
-      '<div class="pos-card-hint">' + facingHintText(entry) + '</div>' +
-      '<div class="pos-card-actions">' + buttonsHtml + '</div></div>';
   }
 
-  function renderChartSequenceStrip(seq, tableSize) {
-    var stripEl = document.getElementById('chart-pos-strip');
-    stripEl.innerHTML = seq.map(function (entry) { return renderChartSequenceCard(entry, tableSize); }).join('');
-  }
+  function renderCurrentTurn(pending, allTurns, tableSize, stackBB) {
+    document.getElementById('hand-done-panel').style.display = 'none';
+    document.getElementById('hand-turn-panel').style.display = '';
 
-  // Single entry point that keeps everything in the chart tab consistent with the current
-  // position sequence: re-derives the sequence from state.chartActions, points the (hidden,
-  // backward-compatible) chart-pos/chart-situation/chart-opp-pos selects at the focused
-  // position's facing state, then re-renders the grid and the interactive strip.
-  function syncChartFromSequence() {
-    var tableSize = state.settings.tableSize;
-    var seq = computeChartSequence(tableSize);
-    if (!seq.some(function (e) { return e.pos === state.chartFocusPos; })) {
-      state.chartFocusPos = seq[0].pos;
+    var badge = document.getElementById('hand-status-badge');
+    badge.textContent = pending.pos + ' 차례 · ' + STREET_LABEL[pending.street] + ' · 팟 ' + round1(pending.potBB) + 'bb';
+
+    var rangeStackBB = effectiveStackForRanges();
+    var adj = Preflop.stackTierAdjust(rangeStackBB);
+    var actions = actionsAvailable(pending.street, pending.level, pending.street === 'preflop' && adj.allRaisesAreAllin);
+
+    var desc = document.getElementById('chart-desc');
+    if (pending.street === 'preflop') {
+      desc.textContent = pending.level === 0
+        ? pending.pos + '의 오픈 레인지입니다 (스택 ' + round1(stackBB) + 'bb 기준).'
+        : pending.pos + '가 ' + pending.aggressorPos + '의 ' + PREFLOP_LEVEL_LABEL[pending.level] + '에 대응하는 레인지입니다 (스택 ' + round1(stackBB) + 'bb 기준).';
+      renderBoardDisplay([]);
+    } else {
+      desc.textContent = STREET_LABEL[pending.street] + ' 보드에서 ' + pending.pos + '의 대응 레인지입니다.';
+      renderBoardDisplay(pending.board);
     }
-    var focus = null;
-    for (var i = 0; i < seq.length; i++) { if (seq[i].pos === state.chartFocusPos) { focus = seq[i]; break; } }
 
-    document.getElementById('chart-pos').innerHTML = optionsHtml(Preflop.positionsFor(tableSize));
-    document.getElementById('chart-pos').value = focus.pos;
-    document.getElementById('chart-situation').value = chartSituationForFacing(focus.facingType);
-    var oppSel = document.getElementById('chart-opp-pos');
-    oppSel.innerHTML = focus.facingOppPos ? '<option value="' + focus.facingOppPos + '">' + focus.facingOppPos + '</option>' : '';
-    oppSel.value = focus.facingOppPos || '';
-
-    renderChart();
-    renderChartSequenceStrip(seq, tableSize);
-    updateChartToFlopButtonLabel();
-  }
-
-  // Called when the user clicks one of the 4 action buttons on a position card: commits that
-  // action for that position, clears any actions already chosen for LATER positions (their
-  // facing state may now be different), focuses this position, and re-syncs everything.
-  function onChartActionClick(pos, action) {
-    var seq = computeChartSequence(state.settings.tableSize);
-    var entry = null;
-    for (var i = 0; i < seq.length; i++) { if (seq[i].pos === pos) { entry = seq[i]; break; } }
-    if (!entry || availableActionsFor(entry.facingType).indexOf(action) === -1) return;
-
-    state.chartActions[pos] = action;
-    var order = Preflop.positionsFor(state.settings.tableSize);
-    var idx = order.indexOf(pos);
-    for (var j = idx + 1; j < order.length; j++) { delete state.chartActions[order[j]]; }
-
-    state.chartFocusPos = pos;
-    syncChartFromSequence();
-  }
-
-  function onChartCardFocus(pos) {
-    if (state.chartFocusPos === pos) return;
-    state.chartFocusPos = pos;
-    syncChartFromSequence();
-  }
-
-  function resetChartSequence() {
-    state.chartActions = {};
-    state.chartFocusPos = null;
-    syncChartFromSequence();
-  }
-
-  // ---------- postflop range chart (board-pinned) ----------
-  function computePostflopChart() {
-    var boardCount = currentChartBoardCount();
-    var board = [];
-    var incomplete = false;
-    for (var i = 0; i < boardCount; i++) {
-      var c = readCardPicker('chart-board-' + i);
-      if (!c) incomplete = true;
-      else board.push(c);
+    if (pending.street === 'preflop') {
+      renderPreflopGrid(computePreflopBuckets(pending.pos, pending.level, pending.aggressorPos, tableSize, rangeStackBB));
+    } else {
+      renderPostflopGrid(computePostflopBucketsForTurn(pending, allTurns, tableSize, rangeStackBB), pending.toCallBB > 0);
     }
-    var uniq = {};
-    var dup = false;
-    board.forEach(function (cd) { if (uniq[cd]) dup = true; uniq[cd] = true; });
 
-    var errEl = document.getElementById('chart-info');
-    if (incomplete) {
-      errEl.textContent = '보드 카드를 모두 선택해주세요 (' + boardCount + '장 필요).';
+    document.getElementById('hand-action-row').innerHTML = actions.map(function (a) {
+      return '<button type="button" class="hand-action-btn action-' + a + '" data-action="' + a + '">' +
+        actionButtonLabel(a, pending, stackBB) + '</button>';
+    }).join('');
+  }
+
+  function renderHandDone(result, tableSize) {
+    document.getElementById('hand-turn-panel').style.display = 'none';
+    var panel = document.getElementById('hand-done-panel');
+    panel.style.display = '';
+    document.getElementById('hand-status-badge').textContent = '핸드 종료';
+    var live = Preflop.positionsFor(tableSize).filter(function (p) { return !result.folded[p]; });
+    if (live.length === 1) {
+      panel.textContent = '🏆 ' + live[0] + ' 승리 — 나머지 전원 폴드';
+    } else {
+      panel.textContent = '리버까지 액션 종료 — 쇼다운 (' + live.join(', ') + ')';
+    }
+  }
+
+  function renderHand() {
+    var tableSize = state.tableSize;
+    var stackBB = state.stackBB;
+    var result = replayHand(state.hand.actions, tableSize, stackBB, state.hand.board);
+    renderHistoryStrip(result.turns);
+    if (result.street === 'done') {
+      renderHandDone(result, tableSize);
       return;
     }
-    if (dup) {
-      errEl.textContent = '보드에 같은 카드가 중복 선택되었습니다.';
-      return;
-    }
+    renderCurrentTurn(result.pending, result.turns, tableSize, stackBB);
+  }
 
-    var pot = Number(document.getElementById('chart-pot').value) || 10;
-    var villainActionSel = document.getElementById('chart-villain-action').value;
-    var toCallBB = villainActionSel === 'bet' ? (Number(document.getElementById('chart-villain-bet').value) || 0) : 0;
-    var heroIsAggressor = document.getElementById('chart-hero-aggressor').value === 'yes';
-    var heroInPosition = document.getElementById('chart-hero-ip').value === 'yes';
-    var rangePos = document.getElementById('chart-villain-range-pos').value;
-    var tableSize = state.settings.tableSize;
+  // ---------- hand lifecycle ----------
+  function dealBoard() {
+    var deck = Core.shuffle(Core.makeDeck(), Math.random);
+    return deck.slice(0, 5);
+  }
+  function resetHand() {
+    state.hand = { actions: [], board: dealBoard() };
+    renderHand();
+  }
 
-    var pctMatch = /^pct:(\d+(\.\d+)?)$/.exec(rangePos);
-    var villainRange = rangePos === 'derived' && state.chartDerivedVillainRange
-      ? state.chartDerivedVillainRange
-      : pctMatch ? Core.topPercent(Number(pctMatch[1]))
-      : rangePos === 'unknown' ? Core.topPercent(70)
-      : Preflop.openingRange(rangePos, tableSize);
-
-    updateChartStreetHeader();
-    errEl.textContent = '계산 중... (보드 1개당 169개 핸드를 시뮬레이션하는 데 1~2초 걸릴 수 있어요)';
-    document.getElementById('range-grid').style.opacity = '0.4';
-
-    // yield a tick so the "계산 중" message actually paints before the heavier synchronous
-    // simulation runs - same trick used for random-hand generation.
-    setTimeout(function () {
-      var buckets = Postflop.rangeBucketsOnBoard(board, {
-        potBB: pot, toCallBB: toCallBB, betBB: toCallBB,
-        villainRange: villainRange, heroIsAggressor: heroIsAggressor, heroInPosition: heroInPosition,
-        iterations: 120, rng: Math.random,
-      });
-
-      var raiseSet = new Set();
-      buckets.raise.forEach(function (c) { raiseSet.add(c); });
-      buckets.bet.forEach(function (c) { raiseSet.add(c); });
-      var foldSet = new Set();
-      buckets.fold.forEach(function (c) { foldSet.add(c); });
-      buckets.check.forEach(function (c) { foldSet.add(c); });
-      var callSet = buckets.call;
-
-      var html = '';
-      for (var r = 0; r < 13; r++) {
-        for (var col = 0; col < 13; col++) {
-          var canon = chartCanonAt(r, col);
-          var cls = raiseSet.has(canon) ? 'action-raise' : callSet.has(canon) ? 'action-call' : 'action-fold';
-          html += '<div class="range-cell ' + cls + '" title="' + canon + '">' + canon + '</div>';
-        }
-      }
-      document.getElementById('range-grid').innerHTML = html;
-      document.getElementById('range-grid').style.opacity = '1';
-
-      function pct(n) { return Math.round((n / 169) * 1000) / 10; }
-      var texture = Postflop.boardTexture(board);
-      var info = (toCallBB > 0 ? '레이즈 ' : '벳 ') + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
-      if (callSet.size) info += ' · 콜 ' + callSet.size + '핸드 (' + pct(callSet.size) + '%)';
-      info += ' · ' + (toCallBB > 0 ? '폴드 ' : '체크 ') + foldSet.size + '핸드 (' + pct(foldSet.size) + '%)';
-      info += ' — 보드 텍스처: ' + Postflop.textureLabel(texture);
-      document.getElementById('chart-info').textContent = info;
-
-      updateChartLegend(toCallBB > 0 ? 'postflop-facingbet' : 'postflop-checked');
-    }, 10);
+  function onHandActionClick(action) {
+    state.hand.actions.push(action);
+    renderHand();
+  }
+  function onHistoryChipClick(idx) {
+    state.hand.actions = state.hand.actions.slice(0, idx);
+    renderHand();
   }
 
   // ---------- wire up ----------
   document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('next-hand-btn').addEventListener('click', onNextHandClick);
-    document.getElementById('reset-stats-btn').addEventListener('click', resetStats);
+    loadSettings();
+    document.getElementById('table-size-select').value = String(state.tableSize);
+    document.getElementById('game-type-select').value = state.gameType;
+    document.getElementById('stack-bb-input').value = state.stackBB;
 
-    document.getElementById('street-focus-select').addEventListener('change', function (e) {
-      state.settings.streetFocus = e.target.value;
-      saveSettings();
-    });
-    document.getElementById('min-stack-input').addEventListener('change', function (e) {
-      state.settings.minStack = Math.max(10, Math.min(300, Number(e.target.value) || 25));
-      saveSettings();
-    });
-    document.getElementById('max-stack-input').addEventListener('change', function (e) {
-      state.settings.maxStack = Math.max(10, Math.min(300, Number(e.target.value) || 150));
-      saveSettings();
-    });
     document.getElementById('table-size-select').addEventListener('change', function (e) {
-      applyTableSizeChange(e.target.value);
-    });
-    document.getElementById('chart-tablesize-select').addEventListener('change', function (e) {
-      // also keep the settings-panel select in sync so re-opening it shows the right value
-      document.getElementById('table-size-select').value = e.target.value;
-      applyTableSizeChange(e.target.value);
+      state.tableSize = Number(e.target.value) || 6;
+      saveSettings();
+      resetHand();
     });
     document.getElementById('game-type-select').addEventListener('change', function (e) {
-      state.settings.gameType = e.target.value;
+      state.gameType = e.target.value;
       saveSettings();
-      updateICMVisibility();
+      renderHand();
     });
-    document.getElementById('c-icm-preset-bubble').addEventListener('click', function () {
-      var remaining = Number(document.getElementById('c-icm-remaining').value) || 9;
-      document.getElementById('c-icm-paid').value = Math.max(1, remaining - 1);
+    document.getElementById('stack-bb-input').addEventListener('change', function (e) {
+      var v = Math.max(4, Math.min(300, Number(e.target.value) || 100));
+      state.stackBB = v;
+      e.target.value = v;
+      saveSettings();
+      resetHand();
     });
-    document.getElementById('c-icm-preset-payjump').addEventListener('click', function () {
-      var remaining = Number(document.getElementById('c-icm-remaining').value) || 9;
-      document.getElementById('c-icm-paid').value = remaining;
+    document.getElementById('reset-hand-btn').addEventListener('click', resetHand);
+
+    document.getElementById('hand-action-row').addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('.hand-action-btn') : null;
+      if (btn) onHandActionClick(btn.getAttribute('data-action'));
+    });
+    document.getElementById('hand-history-strip').addEventListener('click', function (e) {
+      var chip = e.target.closest ? e.target.closest('.hand-turn-chip') : null;
+      if (chip) onHistoryChipClick(Number(chip.getAttribute('data-idx')));
     });
 
-    var settingsToggle = document.getElementById('settings-toggle');
-    settingsToggle.addEventListener('click', function () {
-      var panel = document.getElementById('settings-panel');
-      var isOpen = panel.style.display === 'block';
-      panel.style.display = isOpen ? 'none' : 'block';
-    });
-
-    document.getElementById('tab-random').addEventListener('click', showRandomMode);
-    document.getElementById('tab-custom').addEventListener('click', showCustomMode);
-    document.getElementById('tab-chart').addEventListener('click', showChartMode);
-    document.getElementById('c-tablesize-edit-btn').addEventListener('click', openSettingsPanel);
-    document.getElementById('c-street').addEventListener('change', onStreetChange);
-    document.getElementById('c-pos').addEventListener('change', refreshCustomPositions);
-    document.getElementById('c-facing-type').addEventListener('change', onFacingTypeChange);
-    document.getElementById('c-villain-action').addEventListener('change', onVillainActionChange);
-    document.getElementById('c-submit-btn').addEventListener('click', onCustomSubmit);
-    // chart-pos/chart-situation/chart-opp-pos are now hidden, internal-only selects kept in sync
-    // by syncChartFromSequence() - no user-facing 'change' listeners needed on them anymore.
-    // Position cards are re-rendered on every syncChartFromSequence() call, so a single delegated
-    // click listener on the (stable) container catches every action-button and card click.
-    document.getElementById('chart-pos-strip').addEventListener('click', function (e) {
-      var actionBtn = e.target.closest ? e.target.closest('.pos-action-btn') : null;
-      if (actionBtn && !actionBtn.disabled) {
-        onChartActionClick(actionBtn.getAttribute('data-pos'), actionBtn.getAttribute('data-action'));
-        return;
-      }
-      var card = e.target.closest ? e.target.closest('.pos-card') : null;
-      if (card) onChartCardFocus(card.getAttribute('data-pos'));
-    });
-    document.getElementById('chart-reset-seq-btn').addEventListener('click', resetChartSequence);
-    document.getElementById('chart-to-flop-btn').addEventListener('click', goToFlopFromPreflop);
-    document.getElementById('chart-back-to-preflop-btn').addEventListener('click', backToPreflop);
-    document.getElementById('chart-next-street-btn').addEventListener('click', advanceToNextStreet);
-    document.getElementById('chart-random-board-btn').addEventListener('click', regenerateChartBoard);
-    document.getElementById('chart-villain-action').addEventListener('change', onChartVillainActionChange);
-    // these fields are always visible once in postflop mode (not tucked behind a manual-run
-    // button) - any edit recomputes immediately, same as the delegated board-picker listener.
-    ['chart-pot', 'chart-villain-action', 'chart-villain-bet', 'chart-hero-aggressor', 'chart-hero-ip', 'chart-villain-range-pos'].forEach(function (id) {
-      document.getElementById(id).addEventListener('change', function () {
-        if (state.chartStreet !== 'preflop') computePostflopChart();
-      });
-    });
-    // event delegation on the board-picker container - it gets its innerHTML replaced every time
-    // a street is added, so listeners attached to individual <select> elements would be lost;
-    // delegating to the static parent survives that and auto-recomputes on any card tweak.
-    document.getElementById('chart-board-pickers').addEventListener('change', function () {
-      if (state.chartStreet !== 'preflop') computePostflopChart();
-    });
-
-    populateStaticSelects();
-    onFacingTypeChange();
-
-    renderStats();
-    renderSettingsUI();
-    showRandomMode();
+    resetHand();
   });
 })();
 </script>
