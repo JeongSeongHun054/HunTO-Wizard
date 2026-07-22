@@ -2706,14 +2706,21 @@
       raiseSet = Preflop.threeBetRangeAtStack(pos, aggressorPos, tableSize, stackBB);
       var facingOpen = { type: 'open', openerPos: aggressorPos, sizeBB: 2.3, potBB: 3.8, toCallBB: 2.3 };
       callSet = Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: iterations }).call;
+      // Only carve a top slice of the raise range into "allin" when the stack is actually
+      // shallow enough that stacking off is realistic (mid/short/micro tiers). At a deep
+      // (40bb+) stack, a 3bet sizing (~6.9bb) leaves a huge stack-to-pot ratio behind, so
+      // shoving AA over an open instead of 3betting it is not a real strategy - it should
+      // just show as "raise" like every other hand in the range, not get auto-labeled allin.
       if (adj.allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
-      else splitTopAsAllin(raiseSet, allinSet, 1.5);
+      else if (Preflop.stackTier(stackBB) !== 'deep') splitTopAsAllin(raiseSet, allinSet, 1.5);
     } else if (level === 2) {
       raiseSet = Preflop.fourBetRangeAtStack(pos, stackBB);
       var facingThreeBet = { type: 'threebet', openerPos: pos, threebettorPos: aggressorPos, sizeBB: 6.9, potBB: 10.7, toCallBB: 4.6 };
       callSet = Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: iterations }).call;
+      // Same reasoning as level 1: only meaningful once the stack tier is shallow enough that
+      // a 4bet-sized raise is already close to committing the stack.
       if (adj.allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
-      else splitTopAsAllin(raiseSet, allinSet, 1.0);
+      else if (Preflop.stackTier(stackBB) !== 'deep') splitTopAsAllin(raiseSet, allinSet, 1.0);
     } else {
       // level 3: facing a 4bet, bounded model (call or allin only, no 5bet)
       var facingFourBet = { type: 'fourbet', fourbettorPos: aggressorPos, sizeBB: 16, potBB: 24.4, toCallBB: 9.1 };
