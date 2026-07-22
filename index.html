@@ -420,17 +420,23 @@
     min-height: 1.1em;
   }
   .chart-grid-wrap {
-    margin-bottom: 6px;
-    max-width: 760px;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  /* width/height are set inline in px by fitRangeGrid() (app.js) so the grid always fits the
+     remaining flex space exactly - CSS aspect-ratio + max-width/max-height alone can't guarantee
+     "shrink to whichever dimension is tighter" without occasionally overflowing and forcing a
+     scrollbar, which is exactly what the no-scroll layout must avoid. */
   .range-grid {
     display: grid;
     grid-template-columns: repeat(13, 1fr);
     grid-template-rows: repeat(13, 1fr);
     gap: 1px;
-    width: 100%;
-    aspect-ratio: 1;
-    min-width: 0;
+    flex: 0 0 auto;
   }
   .range-cell {
     display: flex;
@@ -506,11 +512,16 @@
     gap: 4px;
   }
   .pos-card:hover { border-color: rgba(212,164,55,0.5); }
-  .pos-card.selected {
+  .pos-card.selected,
+  .pos-card.focused {
     border-color: var(--accent);
     background: rgba(212,164,55,0.14);
   }
-  .pos-card.decided { border-style: solid; }
+  .pos-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .pos-card.upcoming { opacity: 0.58; }
+  .pos-card.decided { border-style: solid; opacity: 0.9; }
+  .pos-card.folded { opacity: 0.5; }
+  .pos-card.decided:hover, .pos-card.upcoming:hover, .pos-card.folded:hover { opacity: 1; }
   .pos-card-label {
     font-size: 0.85rem;
     font-weight: 700;
@@ -571,108 +582,85 @@
   .chart-postflop-grid .form-row { margin-bottom: 0; }
   .chart-postflop-grid .form-row.span2 { grid-column: 1 / -1; }
 
-  /* ---- single-view app shell: the range-chart engine is the whole app now ---- */
-  .app { max-width: 1100px; width: 100%; padding-left: 24px; padding-right: 24px; box-sizing: border-box; margin: 0 auto; }
+  /* ---- single-view app shell: fixed-viewport, no vertical scroll, ever ---- */
+  html, body { height: 100%; overflow: hidden; }
+  .app {
+    max-width: 1220px;
+    width: 100%;
+    height: 100vh;
+    padding: 12px 22px 10px 22px;
+    box-sizing: border-box;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+  }
+  header { flex: 0 0 auto; margin-bottom: 0; flex-wrap: wrap; gap: 8px; }
+  header h1 { font-size: 1.1rem; }
 
   .hand-toprow {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 12px;
   }
-  .hand-setting { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text-muted); }
+  .hand-setting { display: flex; align-items: center; gap: 5px; font-size: 0.76rem; color: var(--text-muted); }
   .hand-setting select, .hand-setting input[type="number"] {
     background: var(--panel-2);
     color: var(--text);
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 6px;
-    padding: 5px 7px;
-    font-size: 0.82rem;
+    padding: 4px 6px;
+    font-size: 0.76rem;
   }
-  .hand-setting input[type="number"] { width: 64px; }
+  .hand-setting input[type="number"] { width: 54px; }
   .hand-status {
     margin-left: auto;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: var(--accent);
     background: rgba(212,164,55,0.12);
     border: 1px solid rgba(212,164,55,0.3);
     border-radius: 8px;
-    padding: 6px 12px;
+    padding: 4px 10px;
+    white-space: nowrap;
   }
 
-  .hand-board-display { display: flex; gap: 6px; margin-bottom: 10px; }
-  .hand-board-display .card { width: 44px; height: 62px; }
+  .hand-board-display { display: flex; gap: 4px; flex: 0 0 auto; align-items: center; }
+  .hand-board-display .card { width: 30px; height: 42px; }
+  .hand-board-display .card .rank { font-size: 0.72rem; }
+  .hand-board-display .card .suit { font-size: 0.78rem; }
 
-  .hand-history-strip {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 8px;
-    margin-bottom: 12px;
-    flex-wrap: nowrap;
-  }
-  .hand-turn-chip {
+  #pos-strip {
     flex: 0 0 auto;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 5px 10px;
-    border-radius: 8px;
-    background: var(--panel-2);
-    border: 1.5px solid rgba(255,255,255,0.08);
-    font-size: 0.72rem;
-    cursor: pointer;
-    min-width: 54px;
+    gap: 5px;
   }
-  .hand-turn-chip:hover { border-color: rgba(212,164,55,0.5); }
-  .hand-turn-chip .chip-pos { font-weight: 700; font-size: 0.78rem; }
-  .hand-turn-chip .chip-street { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-  .hand-turn-chip .chip-action { font-weight: 700; }
-  .hand-turn-chip.action-fold .chip-action { color: var(--text-muted); }
-  .hand-turn-chip.action-raise .chip-action,
-  .hand-turn-chip.action-bet .chip-action { color: #ff8a75; }
-  .hand-turn-chip.action-call .chip-action,
-  .hand-turn-chip.action-check .chip-action { color: #7ec3f2; }
-  .hand-turn-chip.action-allin .chip-action { color: #ff7fc4; }
-  .hand-turn-chip.pending { border-color: var(--accent); background: rgba(212,164,55,0.14); }
-  .hand-turn-chip.pending .chip-action { color: var(--accent); }
 
-  .hand-action-row {
+  #hand-turn-panel {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin: 12px 0;
+    flex-direction: column;
+    gap: 3px;
   }
-  .hand-action-btn {
-    flex: 1;
-    min-width: 120px;
-    padding: 12px 10px;
-    border-radius: 10px;
-    border: 1.5px solid rgba(255,255,255,0.1);
-    background: var(--panel-2);
-    color: var(--text);
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .hand-action-btn:hover { filter: brightness(1.15); }
-  .hand-action-btn.action-fold { color: var(--text-muted); }
-  .hand-action-btn.action-raise, .hand-action-btn.action-bet { background: #c0442f; color: #fff; border-color: transparent; }
-  .hand-action-btn.action-call, .hand-action-btn.action-check { background: #2f6f8f; color: #fff; border-color: transparent; }
-  .hand-action-btn.action-allin { background: linear-gradient(135deg, #ff512f, #b3006b); color: #fff; border-color: transparent; }
 
   .hand-done-banner {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: var(--panel-2);
     border: 1.5px solid rgba(212,164,55,0.3);
     border-radius: 10px;
     padding: 16px;
     text-align: center;
     font-weight: 700;
+    font-size: 1.1rem;
     color: var(--accent);
-    margin: 12px 0;
   }
 </style>
 </head>
@@ -680,7 +668,6 @@
 <div class="app">
   <header>
     <h1>Claude<span>Poker</span> Range Chart</h1>
-    <button class="icon-btn" id="reset-hand-btn">↺ 새 핸드</button>
   </header>
 
   <div class="hand-toprow">
@@ -704,15 +691,12 @@
     </div>
     <button type="button" class="icon-btn tiny" id="reset-hand-btn" title="새 핸드로 처음부터 다시 시작">↺ 새 핸드</button>
     <div class="hand-status" id="hand-status-badge">UTG 차례</div>
+    <div id="hand-board-display" class="hand-board-display" style="display:none;"></div>
   </div>
 
-  <div id="hand-history-strip" class="hand-history-strip"></div>
+  <div id="pos-strip" class="pos-strip"></div>
 
   <div id="hand-turn-panel">
-    <p class="hint" id="chart-desc"></p>
-
-    <div id="hand-board-display" class="hand-board-display" style="display:none;"></div>
-
     <div class="chart-legend">
       <span class="legend-item" id="chart-legend-raise-item"><span class="legend-swatch action-raise"></span><span id="chart-legend-raise-label">레이즈</span></span>
       <span class="legend-item" id="chart-legend-allin-item"><span class="legend-swatch action-allin"></span>올인</span>
@@ -722,18 +706,9 @@
     <div id="chart-info"></div>
 
     <div class="chart-grid-wrap"><div class="range-grid" id="range-grid"></div></div>
-
-    <div id="hand-action-row" class="hand-action-row"></div>
   </div>
 
   <div id="hand-done-panel" class="hand-done-banner" style="display:none;"></div>
-
-  <p class="hint" style="margin-bottom:0;" id="chart-footnote">169칸 그리드는 참고용 차트이며, 실전 판단은 각 스트리트 액션 버튼을 눌러 직접 이어가 보세요.<br/>4벳/숏스택 올인 상황에서는 콜 레인지 중 최상위 핸드를 '올인'으로 따로 표시합니다 (실제 솔버 산출이 아닌 근사치입니다).</p>
-
-  <footer>
-    이 추천은 GTO 솔버가 아닌 휴리스틱(포트오즈 + 에퀴티 시뮬레이션 + 보드 텍스처 규칙 + 스택 깊이 근사) 기반 근사치입니다.<br/>
-    학습/연습용 오프라인 도구이며, 실시간 온라인 게임 어시스턴트로 사용하기 위한 것이 아닙니다.
-  </footer>
 </div>
 
 <script>
@@ -2621,6 +2596,7 @@
         break;
       }
 
+      var thisActionIndex = actionIdx;
       var action = actionsList[actionIdx++];
       cursorIdx = nextIdx;
       var rec = {
@@ -2629,6 +2605,9 @@
         aggressorPos: aggressorPos, handAggressorPos: handAggressorPos,
         liveOpponents: live.filter(function (x) { return x !== nextPos; }),
         board: boardRevealed.slice(),
+        // index into the flat actionsList this action came from - lets the UI truncate the
+        // array to exactly "right before this decision" when the user wants to revise it.
+        actionIndex: thisActionIndex,
       };
       stillNeedToAct.splice(stillNeedToAct.indexOf(nextPos), 1);
 
@@ -2760,7 +2739,7 @@
   }
 
   // ---------- rendering ----------
-  function renderPreflopGrid(buckets) {
+  function renderPreflopGrid(buckets, labelPrefix) {
     var raiseSet = buckets.raiseSet, callSet = buckets.callSet, allinSet = buckets.allinSet;
     var html = '';
     for (var r = 0; r < 13; r++) {
@@ -2772,14 +2751,14 @@
     }
     document.getElementById('range-grid').innerHTML = html;
     function pct(n) { return Math.round((n / 169) * 1000) / 10; }
-    var info = '레이즈 ' + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
+    var info = (labelPrefix ? labelPrefix + ' — ' : '') + '레이즈 ' + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
     if (allinSet.size) info += ' · 올인 ' + allinSet.size + '핸드 (' + pct(allinSet.size) + '%)';
     if (callSet.size) info += ' · 콜 ' + callSet.size + '핸드 (' + pct(callSet.size) + '%)';
     document.getElementById('chart-info').textContent = info;
     updateChartLegend('preflop');
   }
 
-  function renderPostflopGrid(buckets, facingBet) {
+  function renderPostflopGrid(buckets, facingBet, labelPrefix) {
     var raiseSet = new Set();
     buckets.raise.forEach(function (c) { raiseSet.add(c); });
     buckets.bet.forEach(function (c) { raiseSet.add(c); });
@@ -2798,11 +2777,26 @@
     }
     document.getElementById('range-grid').innerHTML = html;
     function pct(n) { return Math.round((n / 169) * 1000) / 10; }
-    var info = (facingBet ? '레이즈 ' : '벳 ') + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
+    var info = (labelPrefix ? labelPrefix + ' — ' : '') + (facingBet ? '레이즈 ' : '벳 ') + raiseSet.size + '핸드 (' + pct(raiseSet.size) + '%)';
     if (callSet.size) info += ' · 콜 ' + callSet.size + '핸드 (' + pct(callSet.size) + '%)';
     info += ' · ' + (facingBet ? '폴드 ' : '체크 ') + foldSet.size + '핸드 (' + pct(foldSet.size) + '%)';
     document.getElementById('chart-info').textContent = info;
     updateChartLegend(facingBet ? 'postflop-facingbet' : 'postflop-checked');
+  }
+
+  // Sizes #range-grid (in px, both dimensions) to exactly fill whichever is tighter - the
+  // remaining width or height of its flex wrapper - so the 13x13 grid always stays square AND
+  // the page never needs a scrollbar, regardless of viewport size or how tall the position strip
+  // above it happens to be. CSS aspect-ratio alone can't guarantee this (it derives one dimension
+  // from the other, so if that derived dimension overflows the wrapper the browser doesn't shrink
+  // it back down to preserve the ratio - it just overflows and forces a scrollbar).
+  function fitRangeGrid() {
+    var wrap = document.querySelector('.chart-grid-wrap');
+    var grid = document.getElementById('range-grid');
+    if (!wrap || !grid) return;
+    var size = Math.max(60, Math.min(wrap.clientWidth, wrap.clientHeight) - 2);
+    grid.style.width = size + 'px';
+    grid.style.height = size + 'px';
   }
 
   function updateChartLegend(mode) {
@@ -2857,56 +2851,137 @@
     el.innerHTML = board.map(cardHtml).join('');
   }
 
-  function renderHistoryStrip(turns) {
-    var completed = turns.filter(function (t) { return t.action !== null; });
-    var stripEl = document.getElementById('hand-history-strip');
-    if (!completed.length) { stripEl.innerHTML = ''; return; }
-    stripEl.innerHTML = completed.map(function (t, idx) {
-      var label = ACTION_LABEL[t.action] || t.action;
-      var sizeStr = t.sizeBB ? ' ' + round1(t.sizeBB) + 'bb' : '';
-      return '<div class="hand-turn-chip action-' + t.action + '" data-idx="' + idx + '" title="이 액션부터 다시 선택하려면 클릭">' +
-        '<span class="chip-street">' + STREET_LABEL[t.street] + '</span>' +
-        '<span class="chip-pos">' + t.pos + '</span>' +
-        '<span class="chip-action">' + label + sizeStr + '</span></div>';
-    }).join('');
+  // Short "what am I facing" hint shown inside each position card - used both for the real
+  // pending decision and for 'upcoming' preview cards (which, since folds never change the
+  // facing level/aggressor, face the EXACT same situation the pending position currently does).
+  function facingHintFor(turn) {
+    if (turn.street === 'preflop') {
+      if (turn.level === 0) return '언오픈';
+      if (turn.level === 1) return turn.aggressorPos + ' 오픈 대응';
+      if (turn.level === 2) return turn.aggressorPos + ' 3벳 대응';
+      return turn.aggressorPos + ' 4벳 대응';
+    }
+    return turn.level === 0 ? '체크 대기' : '벳 대응';
   }
 
-  function renderCurrentTurn(pending, allTurns, tableSize, stackBB) {
-    document.getElementById('hand-done-panel').style.display = 'none';
-    document.getElementById('hand-turn-panel').style.display = '';
+  // For any position in the CURRENT street (not just the one actually on turn), figures out
+  // what card-state to render:
+  //  - 'pending'  - this position is the real next-to-act decision (result.pending).
+  //  - 'decided'  - this position already has an action this street (possibly folded); its last
+  //                 action-instance this street is reused verbatim (including its actionIndex,
+  //                 which is what lets a click on this card revise the decision).
+  //  - 'upcoming' - hasn't acted yet this street and isn't pending. Since fold never changes the
+  //                 facing level/aggressor, an upcoming position faces an IDENTICAL situation to
+  //                 whatever the pending position currently faces - so its preview just reuses
+  //                 pending's context with pos swapped in.
+  function findCardContext(pos, result) {
+    if (result.pending && result.pending.pos === pos) {
+      return { kind: 'pending', turn: result.pending, chosenAction: null };
+    }
+    var targetStreet = result.pending ? result.pending.street : null;
+    var last = null;
+    result.turns.forEach(function (t) {
+      if (t.action !== null && t.pos === pos && (targetStreet ? t.street === targetStreet : true)) last = t;
+    });
+    if (last) return { kind: 'decided', turn: last, chosenAction: last.action };
+    if (result.pending) {
+      var p = result.pending;
+      var pseudo = {
+        pos: pos, street: p.street, level: p.level, potBB: p.potBB, toCallBB: p.toCallBB,
+        currentBetBB: p.currentBetBB, aggressorPos: p.aggressorPos, handAggressorPos: p.handAggressorPos,
+        board: p.board, liveOpponents: p.liveOpponents.filter(function (x) { return x !== pos; }).concat([p.pos]),
+      };
+      return { kind: 'upcoming', turn: pseudo, chosenAction: null };
+    }
+    return null;
+  }
 
-    var badge = document.getElementById('hand-status-badge');
-    badge.textContent = pending.pos + ' 차례 · ' + STREET_LABEL[pending.street] + ' · 팟 ' + round1(pending.potBB) + 'bb';
-
+  // ---------- position strip: every seat in the current street, all at once ----------
+  // Clicking an action button on a NOT-YET-DECIDED position later in turn order than the actual
+  // pending one auto-folds every position in between (using the real engine, one simulated fold
+  // at a time, so real reopening rules still apply) - this is the "click BTN's Raise/Fold and
+  // everything before it is Fold" UX. Clicking an action button on an ALREADY-decided position
+  // revises it (truncates back to right before that decision and re-applies).
+  function renderPositionStrip(result) {
+    var stripEl = document.getElementById('pos-strip');
+    if (!result.pending) { stripEl.innerHTML = ''; return; }
+    var tableSize = state.tableSize;
+    var stackBB = state.stackBB;
     var rangeStackBB = effectiveStackForRanges();
-    var adj = Preflop.stackTierAdjust(rangeStackBB);
-    var actions = actionsAvailable(pending.street, pending.level, pending.street === 'preflop' && adj.allRaisesAreAllin);
+    var targetStreet = result.pending.street;
+    var order = targetStreet === 'preflop'
+      ? Preflop.positionsFor(tableSize)
+      : Preflop.postflopOrderFor(tableSize).filter(function (p) { return !result.folded[p]; });
+    var allRaisesAreAllin = targetStreet === 'preflop' && Preflop.stackTierAdjust(rangeStackBB).allRaisesAreAllin;
 
-    var desc = document.getElementById('chart-desc');
-    if (pending.street === 'preflop') {
-      desc.textContent = pending.level === 0
-        ? pending.pos + '의 오픈 레인지입니다 (스택 ' + round1(stackBB) + 'bb 기준).'
-        : pending.pos + '가 ' + pending.aggressorPos + '의 ' + PREFLOP_LEVEL_LABEL[pending.level] + '에 대응하는 레인지입니다 (스택 ' + round1(stackBB) + 'bb 기준).';
-      renderBoardDisplay([]);
-    } else {
-      desc.textContent = STREET_LABEL[pending.street] + ' 보드에서 ' + pending.pos + '의 대응 레인지입니다.';
-      renderBoardDisplay(pending.board);
-    }
-
-    if (pending.street === 'preflop') {
-      renderPreflopGrid(computePreflopBuckets(pending.pos, pending.level, pending.aggressorPos, tableSize, rangeStackBB));
-    } else {
-      renderPostflopGrid(computePostflopBucketsForTurn(pending, allTurns, tableSize, rangeStackBB), pending.toCallBB > 0);
-    }
-
-    document.getElementById('hand-action-row').innerHTML = actions.map(function (a) {
-      return '<button type="button" class="hand-action-btn action-' + a + '" data-action="' + a + '">' +
-        actionButtonLabel(a, pending, stackBB) + '</button>';
+    var html = order.map(function (pos) {
+      var ctx = findCardContext(pos, result);
+      if (!ctx) return '';
+      var statusCls = ctx.kind === 'pending' ? 'active'
+        : ctx.kind === 'upcoming' ? 'upcoming'
+        : (ctx.chosenAction === 'fold' ? 'decided folded' : 'decided');
+      var isFocused = state.focusPos ? state.focusPos === pos : ctx.kind === 'pending';
+      var actions = actionsAvailable(ctx.turn.street, ctx.turn.level, allRaisesAreAllin);
+      var buttonsHtml = actions.map(function (a) {
+        var chosen = ctx.chosenAction === a;
+        return '<button type="button" class="pos-action-btn action-' + a + (chosen ? ' chosen' : '') + '" data-pos="' + pos + '" data-action="' + a + '">' +
+          actionButtonLabel(a, ctx.turn, stackBB) + '</button>';
+      }).join('');
+      var hint = ctx.kind === 'decided' ? (ACTION_LABEL[ctx.chosenAction] || ctx.chosenAction) : facingHintFor(ctx.turn);
+      return '<div class="pos-card ' + statusCls + (isFocused ? ' focused' : '') + '" data-pos="' + pos + '">' +
+        '<div class="pos-card-label">' + pos + '</div>' +
+        '<div class="pos-card-hint">' + hint + '</div>' +
+        '<div class="pos-card-actions">' + buttonsHtml + '</div></div>';
     }).join('');
+    stripEl.innerHTML = html;
+  }
+
+  function onCardActionClick(pos, action) {
+    var tableSize = state.tableSize, stackBB = state.stackBB, board = state.hand.board;
+    var result = replayHand(state.hand.actions, tableSize, stackBB, board);
+    if (!result.pending) return; // hand already over, strip isn't clickable
+    var targetStreet = result.pending.street;
+
+    var actions;
+    if (result.pending.pos === pos) {
+      // pos is the REAL next-to-act decision right now - just append. Important: pos may already
+      // have an EARLIER action this street (e.g. UTG's original open, before a later 3bet
+      // reopened the round) - that's a different, superseded decision, not "this" one, so it must
+      // NOT be truncated back to here.
+      actions = state.hand.actions.slice();
+    } else {
+      var existingIdx = -1;
+      result.turns.forEach(function (t) {
+        if (t.action !== null && t.street === targetStreet && t.pos === pos) existingIdx = t.actionIndex;
+      });
+      if (existingIdx !== -1) {
+        // revise: truncate back to right before this position's own (current) decision this street
+        actions = state.hand.actions.slice(0, existingIdx);
+      } else {
+        // jump ahead: auto-fold everyone the engine says must act before this position is reached
+        actions = state.hand.actions.slice();
+        var guard = 0;
+        while (guard++ < 20) {
+          var r = replayHand(actions, tableSize, stackBB, board);
+          if (!r.pending || r.pending.pos === pos || r.pending.street !== targetStreet) break;
+          actions.push('fold');
+        }
+      }
+    }
+    actions.push(action);
+    state.hand.actions = actions;
+    state.focusPos = null;
+    renderHand();
+  }
+
+  function onCardFocusClick(pos) {
+    state.focusPos = pos;
+    renderHand();
   }
 
   function renderHandDone(result, tableSize) {
     document.getElementById('hand-turn-panel').style.display = 'none';
+    document.getElementById('pos-strip').innerHTML = '';
     var panel = document.getElementById('hand-done-panel');
     panel.style.display = '';
     document.getElementById('hand-status-badge').textContent = '핸드 종료';
@@ -2916,18 +2991,42 @@
     } else {
       panel.textContent = '리버까지 액션 종료 — 쇼다운 (' + live.join(', ') + ')';
     }
+    // show whatever board was actually revealed by the time the hand ended (the last recorded
+    // action's `.board` snapshot already reflects that - empty if the hand never left preflop).
+    renderBoardDisplay(result.turns.length ? result.turns[result.turns.length - 1].board : []);
   }
 
   function renderHand() {
     var tableSize = state.tableSize;
     var stackBB = state.stackBB;
+    var rangeStackBB = effectiveStackForRanges();
     var result = replayHand(state.hand.actions, tableSize, stackBB, state.hand.board);
-    renderHistoryStrip(result.turns);
+
     if (result.street === 'done') {
       renderHandDone(result, tableSize);
+      fitRangeGrid();
       return;
     }
-    renderCurrentTurn(result.pending, result.turns, tableSize, stackBB);
+
+    document.getElementById('hand-done-panel').style.display = 'none';
+    document.getElementById('hand-turn-panel').style.display = '';
+    renderPositionStrip(result);
+
+    var pending = result.pending;
+    document.getElementById('hand-status-badge').textContent =
+      pending.pos + ' 차례 · ' + STREET_LABEL[pending.street] + ' · 팟 ' + round1(pending.potBB) + 'bb';
+    renderBoardDisplay(pending.street === 'preflop' ? [] : pending.board);
+
+    var focusPos = state.focusPos || pending.pos;
+    var ctx = findCardContext(focusPos, result) || { kind: 'pending', turn: pending, chosenAction: null };
+    var labelPrefix = ctx.turn.pos + (ctx.kind === 'decided' ? ' (' + (ACTION_LABEL[ctx.chosenAction] || ctx.chosenAction) + ' 선택)' : '');
+
+    if (ctx.turn.street === 'preflop') {
+      renderPreflopGrid(computePreflopBuckets(ctx.turn.pos, ctx.turn.level, ctx.turn.aggressorPos, tableSize, rangeStackBB), labelPrefix);
+    } else {
+      renderPostflopGrid(computePostflopBucketsForTurn(ctx.turn, result.turns, tableSize, rangeStackBB), ctx.turn.toCallBB > 0, labelPrefix);
+    }
+    fitRangeGrid();
   }
 
   // ---------- hand lifecycle ----------
@@ -2937,15 +3036,7 @@
   }
   function resetHand() {
     state.hand = { actions: [], board: dealBoard() };
-    renderHand();
-  }
-
-  function onHandActionClick(action) {
-    state.hand.actions.push(action);
-    renderHand();
-  }
-  function onHistoryChipClick(idx) {
-    state.hand.actions = state.hand.actions.slice(0, idx);
+    state.focusPos = null;
     renderHand();
   }
 
@@ -2975,14 +3066,14 @@
     });
     document.getElementById('reset-hand-btn').addEventListener('click', resetHand);
 
-    document.getElementById('hand-action-row').addEventListener('click', function (e) {
-      var btn = e.target.closest ? e.target.closest('.hand-action-btn') : null;
-      if (btn) onHandActionClick(btn.getAttribute('data-action'));
+    document.getElementById('pos-strip').addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('.pos-action-btn') : null;
+      if (btn) { onCardActionClick(btn.getAttribute('data-pos'), btn.getAttribute('data-action')); return; }
+      var card = e.target.closest ? e.target.closest('.pos-card') : null;
+      if (card) onCardFocusClick(card.getAttribute('data-pos'));
     });
-    document.getElementById('hand-history-strip').addEventListener('click', function (e) {
-      var chip = e.target.closest ? e.target.closest('.hand-turn-chip') : null;
-      if (chip) onHistoryChipClick(Number(chip.getAttribute('data-idx')));
-    });
+
+    window.addEventListener('resize', fitRangeGrid);
 
     resetHand();
   });
