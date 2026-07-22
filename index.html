@@ -521,24 +521,32 @@
     cursor: pointer;
   }
   .to-flop-inline:hover { filter: brightness(1.08); }
+  /* Position strip is a vertical sidebar (one compact row per seat) rather than a horizontal
+     strip of tall cards - the horizontal layout ate up vertical space that the square range
+     grid needed far more (the grid is height-bound, so every pixel reclaimed from the strip's
+     height turns directly into a bigger grid). A fixed-width sidebar also puts the app's leftover
+     horizontal space (previously empty on wide screens, since the square grid stopped growing
+     once it hit the shorter viewport dimension) to actual use instead of wasting it. */
   .pos-strip {
     display: flex;
-    gap: 6px;
-    margin-bottom: 4px;
-    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 4px;
+    flex: 0 0 232px;
+    overflow-y: auto;
+    min-height: 0;
   }
   .pos-card {
-    flex: 1;
+    flex: 0 0 auto;
     min-width: 0;
     background: var(--panel-2);
     border: 1.5px solid rgba(255,255,255,0.08);
     border-radius: 8px;
-    padding: 7px 6px 8px 6px;
+    padding: 5px 8px;
     color: var(--text);
-    text-align: center;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
   }
   .pos-card:hover { border-color: rgba(212,164,55,0.5); }
   .pos-card.selected,
@@ -552,33 +560,39 @@
   .pos-card.folded { opacity: 0.5; }
   .pos-card.decided:hover, .pos-card.upcoming:hover, .pos-card.folded:hover { opacity: 1; }
   .pos-card-label {
-    font-size: 0.85rem;
+    flex: 0 0 34px;
+    font-size: 0.8rem;
     font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .pos-card-hint {
-    font-size: 0.65rem;
+    flex: 0 0 64px;
+    font-size: 0.62rem;
     color: var(--text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding-bottom: 3px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-right: 6px;
+    border-right: 1px solid rgba(255,255,255,0.08);
   }
   .pos-card-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
     gap: 2px;
   }
   .pos-action-btn {
+    flex: 1 1 auto;
+    min-width: 34px;
     text-align: center;
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     font-weight: 700;
     border: 1px solid transparent;
     border-radius: 4px;
-    padding: 2.5px 2px;
+    padding: 3px 2px;
     cursor: pointer;
     background: rgba(255,255,255,0.04);
     font-family: inherit;
@@ -620,19 +634,19 @@
      (invisible cut-off content). Zero it out here since .app now owns all of its own padding. */
   html, body { height: 100%; overflow: hidden; padding: 0; margin: 0; }
   .app {
-    max-width: 1220px;
+    max-width: 1720px;
     width: 100%;
     height: 100vh;
-    padding: 12px 22px 10px 22px;
+    padding: 10px 22px 8px 22px;
     box-sizing: border-box;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
     overflow: hidden;
   }
   header { flex: 0 0 auto; margin-bottom: 0; flex-wrap: wrap; gap: 8px; }
-  header h1 { font-size: 1.1rem; }
+  header h1 { font-size: 1.05rem; }
 
   .hand-toprow {
     flex: 0 0 auto;
@@ -668,14 +682,30 @@
   .hand-board-display .card .rank { font-size: 0.72rem; }
   .hand-board-display .card .suit { font-size: 0.78rem; }
 
-  #pos-strip {
-    flex: 0 0 auto;
+  /* Row that holds the position sidebar and the chart side by side, filling all the leftover
+     vertical space below the header/toprow - this is what lets the square grid grow to the full
+     available height (and, since it's square, correspondingly wider) instead of being squeezed
+     by a position strip stacked above it. */
+  .chart-body-row {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
-    gap: 5px;
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  #pos-strip {
+    flex: 0 0 232px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   #hand-turn-panel {
     flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -729,20 +759,22 @@
     <div id="hand-board-display" class="hand-board-display" style="display:none;"></div>
   </div>
 
-  <div id="pos-strip" class="pos-strip"></div>
+  <div class="chart-body-row">
+    <div id="pos-strip" class="pos-strip"></div>
 
-  <div id="hand-turn-panel">
-    <div class="chart-legend">
-      <span class="legend-item" id="chart-legend-raise-item"><span class="legend-swatch action-raise"></span><span id="chart-legend-raise-label">레이즈</span></span>
-      <span class="legend-item" id="chart-legend-allin-item"><span class="legend-swatch action-allin"></span>올인</span>
-      <span class="legend-item" id="chart-legend-call-item"><span class="legend-swatch action-call"></span><span id="chart-legend-call-label">콜</span></span>
-      <span class="legend-item" id="chart-legend-fold-item"><span class="legend-swatch action-fold"></span><span id="chart-legend-fold-label">폴드</span></span>
-    </div>
-    <div id="chart-info"></div>
+    <div id="hand-turn-panel">
+      <div class="chart-legend">
+        <span class="legend-item" id="chart-legend-raise-item"><span class="legend-swatch action-raise"></span><span id="chart-legend-raise-label">레이즈</span></span>
+        <span class="legend-item" id="chart-legend-allin-item"><span class="legend-swatch action-allin"></span>올인</span>
+        <span class="legend-item" id="chart-legend-call-item"><span class="legend-swatch action-call"></span><span id="chart-legend-call-label">콜</span></span>
+        <span class="legend-item" id="chart-legend-fold-item"><span class="legend-swatch action-fold"></span><span id="chart-legend-fold-label">폴드</span></span>
+      </div>
+      <div id="chart-info"></div>
 
-    <div class="chart-grid-wrap">
-      <div class="range-grid" id="range-grid"></div>
-      <div id="grid-spinner"><div class="grid-spinner-circle"></div></div>
+      <div class="chart-grid-wrap">
+        <div class="range-grid" id="range-grid"></div>
+        <div id="grid-spinner"><div class="grid-spinner-circle"></div></div>
+      </div>
     </div>
   </div>
 
@@ -1825,6 +1857,22 @@
     return buckets;
   }
 
+  // Same idea as rangeBucketsForFacing, but returns the full decidePreflop result (including
+  // equity/requiredEquity) per hand instead of just bucketing into Sets - needed to show mixed
+  // (non-100%) frequencies near the call/fold indifference point, where a small equity margin
+  // maps to a genuine mixing frequency instead of a hard cutoff.
+  function decisionDetailForFacing(heroPos, facing, tableSize, opts) {
+    opts = opts || {};
+    const detail = {};
+    for (const canon of Core.RANKED_169) {
+      const cards = representativeCards(canon);
+      detail[canon] = decidePreflop(cards, heroPos, facing, {
+        tableSize, rng: opts.rng, iterations: opts.iterations || 150, icmPremium: opts.icmPremium,
+      });
+    }
+    return detail;
+  }
+
   return {
     POSITIONS_BY_SIZE, positionsFor, postflopOrderFor,
     OPEN_PCT_BY_SIZE,
@@ -1832,7 +1880,7 @@
     openingRange, threeBetRange, fourBetRange,
     stackTier, stackTierAdjust, openingRangeAtStack, threeBetRangeAtStack, fourBetRangeAtStack,
     sizing, playabilityAdjustment, decidePreflop,
-    representativeCards, rangeBucketsForFacing,
+    representativeCards, rangeBucketsForFacing, decisionDetailForFacing,
     pushFoldShovePct, icmPremiumForTournament,
   };
 });
@@ -2822,37 +2870,120 @@
     return Math.round(t * t * 100);
   }
 
+  // ---------- mixed-frequency helpers ----------
+  // Real solved ranges are almost never a hard 100%-this-or-100%-that cutoff - hands right at an
+  // indifference point are played as a MIX of two actions at some frequency. This app approximates
+  // that near every threshold this file uses to build a range: a small band of hands around a
+  // rank-based cutoff (open/fold, raise/allin) linearly ramps from 0% to 100% instead of flipping
+  // instantly, and near an equity-based cutoff (call/fold, which already has a real per-hand
+  // equity margin available) the ramp is driven directly by how close that margin is to zero.
+  var FREQ_BAND_RANK = 4; // hands of cushion on either side of a rank-based cutoff that mix
+  var FREQ_EQUITY_SPREAD = 0.035; // equity-margin (vs required) that spans the full 0%-100% ramp
+
+  // rank 0 = best hand (AA). "Primary" side is the lower-rank (stronger-hand) side of the cutoff.
+  function rankMixFreq(rank, cutoffRank, band) {
+    if (rank <= cutoffRank - band) return 100;
+    if (rank >= cutoffRank + band) return 0;
+    return Math.round(50 + (50 * (cutoffRank - rank)) / band);
+  }
+  function equityMixFreq(equity, requiredEquity, spread) {
+    var diff = equity - requiredEquity;
+    if (diff >= spread) return 100;
+    if (diff <= -spread) return 0;
+    return Math.round(50 + (50 * diff) / spread);
+  }
+
+  // Builds a canon -> {action: pct, ...} frequency map for one "aggressive vs passive" decision
+  // (open-or-fold, 3bet-or-continue, 4bet-or-continue, shove-or-continue), optionally with a
+  // second raise/allin sub-boundary carved out of the top of the aggressive range.
+  //   aggressiveSetFull: the full raise-or-allin range before any allin sub-split
+  //   allinCutoffRank: global rank cutoff where the allin sub-slice starts, or null if none
+  //   aggressiveActionName: 'raise' or 'allin' - what the non-allin part of the aggressive range is called
+  //   detail: per-canon decidePreflop() result for the call/fold decision, or null if this level has no call option (e.g. an unopened pot)
+  function buildFreqMap(aggressiveSetFull, allinCutoffRank, aggressiveActionName, detail) {
+    var freq = {};
+    var aggrCutoffRank = aggressiveSetFull.size - 0.5;
+    Core.RANKED_169.forEach(function (canon) {
+      var r = Core.RANK_INDEX[canon];
+      var entry = {};
+      if (allinCutoffRank !== null && aggressiveSetFull.has(canon) && r <= allinCutoffRank + FREQ_BAND_RANK) {
+        var freqAllin = rankMixFreq(r, allinCutoffRank, FREQ_BAND_RANK);
+        if (freqAllin >= 100) entry.allin = 100;
+        else if (freqAllin <= 0) entry[aggressiveActionName] = 100;
+        else { entry.allin = freqAllin; entry[aggressiveActionName] = 100 - freqAllin; }
+        freq[canon] = entry;
+        return;
+      }
+      if (r <= aggrCutoffRank - FREQ_BAND_RANK) {
+        entry[aggressiveActionName] = 100;
+        freq[canon] = entry;
+        return;
+      }
+      if (r <= aggrCutoffRank + FREQ_BAND_RANK) {
+        var freqAggr = rankMixFreq(r, aggrCutoffRank, FREQ_BAND_RANK);
+        var altAction = (detail && detail[canon] && detail[canon].action === 'call') ? 'call' : 'fold';
+        if (freqAggr >= 100) entry[aggressiveActionName] = 100;
+        else if (freqAggr <= 0) entry[altAction] = 100;
+        else { entry[aggressiveActionName] = freqAggr; entry[altAction] = 100 - freqAggr; }
+        freq[canon] = entry;
+        return;
+      }
+      var d = detail && detail[canon];
+      if (!d || d.action === 'raise') { entry[d ? aggressiveActionName : 'fold'] = 100; freq[canon] = entry; return; }
+      var freqCall = equityMixFreq(d.equity, d.requiredEquity, FREQ_EQUITY_SPREAD);
+      if (freqCall >= 100) entry.call = 100;
+      else if (freqCall <= 0) entry.fold = 100;
+      else { entry.call = freqCall; entry.fold = 100 - freqCall; }
+      freq[canon] = entry;
+    });
+    return freq;
+  }
+
   // ---------- preflop range buckets for the position currently on turn (stack-depth aware) ----------
   function computePreflopBuckets(pos, level, aggressorPos, tableSize, stackBB, icmPremium) {
     icmPremium = icmPremium || 0;
     var iterations = 150;
-    var raiseSet = new Set(), callSet = new Set(), allinSet = new Set();
+    var raiseSet = new Set(), callSet = new Set(), allinSet = new Set(), freq = {};
 
     if (level === 0) {
       raiseSet = Preflop.openingRangeAtStack(pos, tableSize, stackBB, { icmPremium: icmPremium });
-      if (Preflop.stackTierAdjust(stackBB).allRaisesAreAllin) { allinSet = raiseSet; raiseSet = new Set(); }
+      var isAllinAction = Preflop.stackTierAdjust(stackBB).allRaisesAreAllin;
+      var aggressiveActionName0 = isAllinAction ? 'allin' : 'raise';
+      freq = buildFreqMap(raiseSet, null, aggressiveActionName0, null);
+      if (isAllinAction) { allinSet = raiseSet; raiseSet = new Set(); }
     } else if (level === 1) {
       raiseSet = Preflop.threeBetRangeAtStack(pos, aggressorPos, tableSize, stackBB);
       var facingOpen = { type: 'open', openerPos: aggressorPos, sizeBB: 2.3, potBB: 3.8, toCallBB: 2.3 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingOpen, tableSize, { iterations: iterations, icmPremium: icmPremium }).call;
+      var detail1 = Preflop.decisionDetailForFacing(pos, facingOpen, tableSize, { iterations: iterations, icmPremium: icmPremium });
+      callSet = new Set();
+      Core.RANKED_169.forEach(function (c) { if (detail1[c].action === 'call') callSet.add(c); });
       var pct1 = allinSplitPctForLevel(1, stackBB);
+      var allinCutoff1 = pct1 > 0 ? Math.round((pct1 / 100) * Core.RANKED_169.length) - 0.5 : null;
+      freq = buildFreqMap(raiseSet, allinCutoff1, 'raise', detail1);
       if (pct1 >= 100) { allinSet = raiseSet; raiseSet = new Set(); }
       else if (pct1 > 0) splitTopAsAllin(raiseSet, allinSet, pct1);
     } else if (level === 2) {
       raiseSet = Preflop.fourBetRangeAtStack(pos, stackBB);
       var facingThreeBet = { type: 'threebet', openerPos: pos, threebettorPos: aggressorPos, sizeBB: 6.9, potBB: 10.7, toCallBB: 4.6 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingThreeBet, tableSize, { iterations: iterations, icmPremium: icmPremium }).call;
+      var detail2 = Preflop.decisionDetailForFacing(pos, facingThreeBet, tableSize, { iterations: iterations, icmPremium: icmPremium });
+      callSet = new Set();
+      Core.RANKED_169.forEach(function (c) { if (detail2[c].action === 'call') callSet.add(c); });
       var pct2 = allinSplitPctForLevel(2, stackBB);
+      var allinCutoff2 = pct2 > 0 ? Math.round((pct2 / 100) * Core.RANKED_169.length) - 0.5 : null;
+      freq = buildFreqMap(raiseSet, allinCutoff2, 'raise', detail2);
       if (pct2 >= 100) { allinSet = raiseSet; raiseSet = new Set(); }
       else if (pct2 > 0) splitTopAsAllin(raiseSet, allinSet, pct2);
     } else {
-      // level 3: facing a 4bet, bounded model (call or allin only, no 5bet)
+      // level 3: facing a 4bet, bounded model (call or allin only, no 5bet, no separate raise tier)
       var facingFourBet = { type: 'fourbet', fourbettorPos: aggressorPos, sizeBB: 16, potBB: 24.4, toCallBB: 9.1 };
-      callSet = Preflop.rangeBucketsForFacing(pos, facingFourBet, tableSize, { iterations: iterations, icmPremium: icmPremium }).call;
+      var detail3 = Preflop.decisionDetailForFacing(pos, facingFourBet, tableSize, { iterations: iterations, icmPremium: icmPremium });
+      callSet = new Set();
+      Core.RANKED_169.forEach(function (c) { if (detail3[c].action === 'call') callSet.add(c); });
       allinSet = Preflop.fourBetRangeAtStack(pos, stackBB);
       allinSet.forEach(function (c) { callSet.delete(c); });
+      freq = buildFreqMap(allinSet, null, 'allin', detail3);
     }
-    return { raiseSet: raiseSet, callSet: callSet, allinSet: allinSet };
+    return { raiseSet: raiseSet, callSet: callSet, allinSet: allinSet, freq: freq };
   }
 
   // Reconstructs a still-live opponent's assumed range from their last preflop action, so
@@ -2908,14 +3039,54 @@
   }
 
   // ---------- rendering ----------
+  // Fixed left-to-right stacking order for mixed-frequency cells, matching the legend order.
+  var FREQ_ACTION_ORDER = ['raise', 'allin', 'call', 'fold'];
+  var FREQ_ACTION_COLOR = { raise: '#c0442f', allin: '#9b2fd6', call: '#2f6f8f', fold: 'rgba(255,255,255,0.14)' };
+  // Builds a proportional left-to-right split background for a hand's action-frequency entry,
+  // e.g. {raise:70, allin:30} becomes a bar that's red for the first 70% and purple for the rest
+  // - this is what actually shows the "not every hand is 100% one action" mixed strategy, instead
+  // of collapsing every hand to whichever action happens to be most likely.
+  function freqCellStyle(entry) {
+    var stops = [];
+    var acc = 0;
+    FREQ_ACTION_ORDER.forEach(function (a) {
+      var v = entry[a];
+      if (v) {
+        var next = acc + v;
+        stops.push(FREQ_ACTION_COLOR[a] + ' ' + acc + '% ' + next + '%');
+        acc = next;
+      }
+    });
+    if (!stops.length) stops.push(FREQ_ACTION_COLOR.fold + ' 0% 100%');
+    return 'background: linear-gradient(90deg, ' + stops.join(', ') + ');';
+  }
+  function freqCellTitle(canon, entry) {
+    var parts = FREQ_ACTION_ORDER.filter(function (a) { return entry[a]; }).map(function (a) {
+      return ACTION_LABEL[a] + ' ' + entry[a] + '%';
+    });
+    return canon + (parts.length ? ' — ' + parts.join(' · ') : '');
+  }
+  // A cell counts toward a given action's "dominant" class (for the fold-text-color rule below)
+  // if that action is its single largest share.
+  function freqDominantAction(entry) {
+    var best = 'fold', bestPct = -1;
+    FREQ_ACTION_ORDER.forEach(function (a) { if ((entry[a] || 0) > bestPct) { best = a; bestPct = entry[a] || 0; } });
+    return best;
+  }
+
   function renderPreflopGrid(buckets, labelPrefix) {
-    var raiseSet = buckets.raiseSet, callSet = buckets.callSet, allinSet = buckets.allinSet;
+    var raiseSet = buckets.raiseSet, callSet = buckets.callSet, allinSet = buckets.allinSet, freq = buckets.freq || {};
     var html = '';
     for (var r = 0; r < 13; r++) {
       for (var c = 0; c < 13; c++) {
         var canon = chartCanonAt(r, c);
-        var cls = raiseSet.has(canon) ? 'action-raise' : allinSet.has(canon) ? 'action-allin' : callSet.has(canon) ? 'action-call' : 'action-fold';
-        html += '<div class="range-cell ' + cls + '" title="' + canon + '">' + canon + '</div>';
+        var entry = freq[canon] || { fold: 100 };
+        // dominant-action class kept for compatibility with anything that inspects "what does
+        // this hand mostly do" (tests, legend counts) - the inline gradient background is what
+        // actually shows the mix visually, the class just drives text color (muted for fold).
+        var dominant = freqDominantAction(entry);
+        var cls = 'action-' + dominant;
+        html += '<div class="range-cell ' + cls + '" style="' + freqCellStyle(entry) + (dominant === 'fold' ? '' : ' color:#fff;') + '" title="' + freqCellTitle(canon, entry) + '">' + canon + '</div>';
       }
     }
     document.getElementById('range-grid').innerHTML = html;
