@@ -207,7 +207,7 @@
   .action-check { background: #3d6f8f; }
   .action-call { background: #2f8f6f; }
   .action-bet, .action-raise { background: #c0442f; }
-  .action-allin { background: linear-gradient(135deg, #ff512f, #b3006b); }
+  .action-allin { background: #9b2fd6; }
   .action-btn.disabled { pointer-events: none; opacity: 0.55; }
   .action-btn.correct-choice { outline: 3px solid var(--good); opacity: 1; }
   .action-btn.wrong-choice { outline: 3px solid var(--bad); opacity: 1; }
@@ -473,6 +473,10 @@
     letter-spacing: -0.3px;
   }
   .action-raise { background: #c0442f; color: #fff; }
+  /* solid, distinctly different hue (violet/magenta) from raise's red-orange - the old gradient
+     (135deg, #ff512f -> #b3006b) started at nearly the same orange-red as raise, so on the small
+     169-cell grid and the tiny legend swatch the two looked almost identical at a glance. */
+  .action-allin { background: #9b2fd6; color: #fff; }
   .action-call { background: #2f6f8f; color: #fff; }
   .action-fold { background: rgba(255,255,255,0.05); color: var(--text-muted); }
 
@@ -582,7 +586,9 @@
   .pos-action-btn.action-fold { color: var(--text-muted); }
   .pos-action-btn.action-raise { color: #ff8a75; }
   .pos-action-btn.action-call { color: #7ec3f2; }
-  .pos-action-btn.action-allin { color: #ff7fc4; }
+  /* light lavender, not another warm pink/coral tone - keeps allin clearly a different color
+     family from raise's coral rather than just a lighter/darker shade of the same hue. */
+  .pos-action-btn.action-allin { color: #cf8bff; }
   .pos-action-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
   /* chosen state: fill with the action's own bright color, dark text on top. Deliberately spelled
      out per-action instead of `background: currentColor` - currentColor resolves against this
@@ -591,7 +597,7 @@
   .pos-action-btn.chosen.action-fold { background: var(--text-muted); color: #0d1a14; border-color: rgba(255,255,255,0.3); }
   .pos-action-btn.chosen.action-raise { background: #ff8a75; color: #0d1a14; border-color: rgba(255,255,255,0.3); }
   .pos-action-btn.chosen.action-call { background: #7ec3f2; color: #0d1a14; border-color: rgba(255,255,255,0.3); }
-  .pos-action-btn.chosen.action-allin { background: #ff7fc4; color: #0d1a14; border-color: rgba(255,255,255,0.3); }
+  .pos-action-btn.chosen.action-allin { background: #cf8bff; color: #0d1a14; border-color: rgba(255,255,255,0.3); }
   .pos-action-btn:disabled {
     opacity: 0.28;
     cursor: not-allowed;
