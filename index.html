@@ -3134,13 +3134,20 @@
     var wrap = document.querySelector('.chart-grid-wrap');
     var grid = document.getElementById('range-grid');
     if (!wrap || !grid) return;
+    // Width and height are sized INDEPENDENTLY to each fill the wrapper exactly, rather than
+    // both being forced to the smaller of the two to keep cells perfectly square. On a normal
+    // wide monitor the wrapper is far wider than it is tall (height is what's limited by the
+    // viewport), so a strictly-square grid left a large empty strip of unused width beside it
+    // no matter how big the grid grew - cells are now rectangular (matching the wrapper's own
+    // aspect ratio) so the whole available area is used instead of leaving that space empty.
     // No artificial minimum here on purpose: at very short viewports the grid must be allowed to
     // shrink as far as needed, because there's nowhere for the overflow to go (the whole app is
     // overflow:hidden - clipped content would be permanently inaccessible, which is worse than a
     // small grid).
-    var size = Math.max(20, Math.min(wrap.clientWidth, wrap.clientHeight) - 2);
-    grid.style.width = size + 'px';
-    grid.style.height = size + 'px';
+    var w = Math.max(20, wrap.clientWidth - 2);
+    var h = Math.max(20, wrap.clientHeight - 2);
+    grid.style.width = w + 'px';
+    grid.style.height = h + 'px';
   }
 
   function updateChartLegend(mode) {
